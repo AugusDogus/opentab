@@ -1,5 +1,5 @@
 {
-  "name": "bun-chrome-extension",
+  "name": "opentab",
   "module": "index.ts",
   "scripts": {
     "build": "bun run config/build.ts",
