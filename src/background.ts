@@ -18,7 +18,7 @@ function updateIcon(isDark: boolean) {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "opentab-action",
-    title: "Open Tab Action",
+    title: "Send to your devices",
     contexts: ["all", "action"],
   });
 
