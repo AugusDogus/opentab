@@ -4,7 +4,7 @@ Send tabs to your devices.
 
 ## Structure
 
-This is a monorepo using [Bun workspaces](https://bun.sh/docs/install/workspaces):
+This is a monorepo using [Bun workspaces](https://bun.sh/docs/install/workspaces) and [Turborepo](https://turbo.build/repo):
 
 - `apps/extension` — Chrome extension
 - `apps/web` — Next.js backend (coming soon)
@@ -19,9 +19,17 @@ bun install
 ## Development
 
 ```bash
-# Run the extension dev server
-cd apps/extension
-bun dev
+# Run all dev servers
+bun run dev
+
+# Run a specific app
+turbo run dev --filter=@opentab/extension
 ```
 
-Then load the `apps/extension/build` folder as an unpacked extension in Chrome.
+For the Chrome extension, load `apps/extension/build` as an unpacked extension.
+
+## Build
+
+```bash
+bun run build
+```
