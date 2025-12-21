@@ -1,15 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
-import * as Application from "expo-application";
 import Constants from "expo-constants";
 import { isDevice } from "expo-device";
 import * as Notifications from "expo-notifications";
-import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
+import { useDeviceIdentifier } from "@/hooks/use-device-identifier";
+import { getDeviceIdentifier } from "@/utils/device-identifier";
 import { trpc } from "@/utils/trpc";
-
-const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({
@@ -21,27 +19,6 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
-
-const getDeviceIdentifier = async (): Promise<string> => {
-  // Try to get stored identifier first
-  const stored = await SecureStore.getItemAsync(DEVICE_IDENTIFIER_KEY);
-  if (stored) {
-    return stored;
-  }
-
-  // Generate a new identifier based on platform
-  const baseId =
-    Platform.OS === "android"
-      ? (Application.getAndroidId() ?? crypto.randomUUID())
-      : crypto.randomUUID();
-
-  const deviceName = Constants.deviceName ?? "unknown";
-  const newId = `mobile-${Platform.OS}-${baseId}-${deviceName}`;
-
-  // Persist the identifier
-  await SecureStore.setItemAsync(DEVICE_IDENTIFIER_KEY, newId);
-  return newId;
-};
 
 const setupNotificationChannel = async (): Promise<void> => {
   if (Platform.OS === "android") {
@@ -95,17 +72,12 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const onUrlReceivedRef = useRef(options.onUrlReceived);
-  const [deviceIdentifier, setDeviceIdentifier] = useState<string>("");
+  const deviceIdentifier = useDeviceIdentifier();
 
   // Keep the ref up to date with the latest callback
   useEffect(() => {
     onUrlReceivedRef.current = options.onUrlReceived;
   }, [options.onUrlReceived]);
-
-  // Initialize device identifier
-  useEffect(() => {
-    getDeviceIdentifier().then(setDeviceIdentifier);
-  }, []);
 
   const registerDeviceMutation = useMutation(
     trpc.device.register.mutationOptions({
@@ -121,14 +93,14 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   const registerDevice = useCallback(async () => {
     await setupNotificationChannel();
     const pushToken = await getPushToken();
-    const deviceIdentifier = await getDeviceIdentifier();
+    const id = await getDeviceIdentifier();
     const deviceName = Constants.deviceName ?? `${Platform.OS} device`;
 
     registerDeviceMutation.mutate({
       deviceType: "mobile",
       deviceName,
       pushToken: pushToken ?? undefined,
-      deviceIdentifier,
+      deviceIdentifier: id,
     });
   }, [registerDeviceMutation]);
 
