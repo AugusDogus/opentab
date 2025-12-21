@@ -1,0 +1,137 @@
+import { useMutation } from "@tanstack/react-query";
+import Constants from "expo-constants";
+import { isDevice } from "expo-device";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+import { useEffect, useRef, useCallback } from "react";
+
+import { trpc } from "@/utils/trpc";
+
+// Configure how notifications are handled when the app is foregrounded
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+const getDeviceIdentifier = (): string => {
+  // Use a combination of constants to create a unique device identifier
+  const installationId = Constants.installationId ?? "unknown";
+  const deviceName = Constants.deviceName ?? "unknown";
+  return `mobile-${Platform.OS}-${installationId}-${deviceName}`;
+};
+
+const setupNotificationChannel = async (): Promise<void> => {
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+  }
+};
+
+const requestNotificationPermissions = async (): Promise<boolean> => {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+  if (existingStatus === "granted") {
+    return true;
+  }
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+};
+
+const getPushToken = async (): Promise<string | null> => {
+  if (!isDevice) {
+    console.log("Push notifications are only available on physical devices");
+    return null;
+  }
+
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) {
+    console.log("Push notification permission not granted");
+    return null;
+  }
+
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) {
+    console.error("EAS project ID is not configured");
+    return null;
+  }
+
+  const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+  return tokenData.data;
+};
+
+type UseDeviceRegistrationOptions = {
+  onUrlReceived?: (url: string) => void;
+};
+
+export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}) => {
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+
+  const registerDeviceMutation = useMutation(
+    trpc.device.register.mutationOptions({
+      onSuccess: (data) => {
+        console.log("Device registered successfully:", data);
+      },
+      onError: (error) => {
+        console.error("Failed to register device:", error);
+      },
+    }),
+  );
+
+  const registerDevice = useCallback(async () => {
+    await setupNotificationChannel();
+    const pushToken = await getPushToken();
+    const deviceIdentifier = getDeviceIdentifier();
+    const deviceName = Constants.deviceName ?? `${Platform.OS} device`;
+
+    registerDeviceMutation.mutate({
+      deviceType: "mobile",
+      deviceName,
+      pushToken: pushToken ?? undefined,
+      deviceIdentifier,
+    });
+  }, [registerDeviceMutation]);
+
+  useEffect(() => {
+    // Handle notifications received while app is foregrounded
+    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+      console.log("Notification received:", notification);
+    });
+
+    // Handle notification tap (when user taps on notification)
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      const url = data?.url as string | undefined;
+
+      if (url && options.onUrlReceived) {
+        options.onUrlReceived(url);
+      }
+    });
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, [options]);
+
+  return {
+    registerDevice,
+    isRegistering: registerDeviceMutation.isPending,
+    registrationError: registerDeviceMutation.error,
+    deviceIdentifier: getDeviceIdentifier(),
+  };
+};
