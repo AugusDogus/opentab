@@ -41,7 +41,10 @@
       "$PLASMO_PUBLIC_SERVER_URL/*"
     ],
     "permissions": [
-      "contextMenus"
+      "contextMenus",
+      "notifications",
+      "alarms",
+      "storage"
     ],
     "action": {
       "default_title": "opentab",
