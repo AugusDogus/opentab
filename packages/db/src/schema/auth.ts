@@ -85,10 +85,7 @@ export const verification = sqliteTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
-  accounts: many(account),
-}));
+// Note: userRelations is defined in device.ts to include devices relationship
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
