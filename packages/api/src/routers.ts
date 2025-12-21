@@ -1,5 +1,6 @@
 import { deviceRouter } from "./device-router";
 import { protectedProcedure, publicProcedure, router } from "./index";
+import { tabRouter } from "./tab-router";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -12,6 +13,7 @@ export const appRouter = router({
     };
   }),
   device: deviceRouter,
+  tab: tabRouter,
 });
 
 export type AppRouter = typeof appRouter;
