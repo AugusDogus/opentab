@@ -21,11 +21,6 @@ export default {
           category: ["android.intent.category.DEFAULT"],
           data: [{ mimeType: "text/plain" }],
         },
-        {
-          action: "android.intent.action.VIEW",
-          category: ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"],
-          data: [{ scheme: "http" }, { scheme: "https" }],
-        },
       ],
     },
     name: "opentab",

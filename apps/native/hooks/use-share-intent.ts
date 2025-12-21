@@ -1,15 +1,34 @@
 import { useMutation } from "@tanstack/react-query";
+import * as Application from "expo-application";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
+import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 
 import { trpc } from "@/utils/trpc";
 
-const getDeviceIdentifier = (): string => {
-  const installationId = Constants.installationId ?? "unknown";
+const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
+
+const getDeviceIdentifier = async (): Promise<string> => {
+  // Try to get stored identifier first
+  const stored = await SecureStore.getItemAsync(DEVICE_IDENTIFIER_KEY);
+  if (stored) {
+    return stored;
+  }
+
+  // Generate a new identifier based on platform
+  const baseId =
+    Platform.OS === "android"
+      ? (Application.getAndroidId() ?? crypto.randomUUID())
+      : crypto.randomUUID();
+
   const deviceName = Constants.deviceName ?? "unknown";
-  return `mobile-${Platform.OS}-${installationId}-${deviceName}`;
+  const newId = `mobile-${Platform.OS}-${baseId}-${deviceName}`;
+
+  // Persist the identifier
+  await SecureStore.setItemAsync(DEVICE_IDENTIFIER_KEY, newId);
+  return newId;
 };
 
 const isValidUrl = (url: string): boolean => {
@@ -32,12 +51,18 @@ type UseShareIntentResult = {
   sendToDevices: () => void;
   isSending: boolean;
   sendResult: { sentToMobile: number; sentToExtensions: number } | null;
-  sendError: Error | null;
+  sendError: { message: string } | null;
   clearSharedUrl: () => void;
 };
 
 export const useShareIntent = (): UseShareIntentResult => {
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  const [deviceIdentifier, setDeviceIdentifier] = useState<string>("");
+
+  // Initialize device identifier
+  useEffect(() => {
+    getDeviceIdentifier().then(setDeviceIdentifier);
+  }, []);
 
   const sendTabMutation = useMutation(
     trpc.tab.send.mutationOptions({
@@ -91,14 +116,14 @@ export const useShareIntent = (): UseShareIntentResult => {
   }, [handleUrl]);
 
   const sendToDevices = useCallback(() => {
-    if (!sharedUrl) return;
+    if (!sharedUrl || !deviceIdentifier) return;
 
     sendTabMutation.mutate({
       url: sharedUrl,
       title: undefined,
-      sourceDeviceIdentifier: getDeviceIdentifier(),
+      sourceDeviceIdentifier: deviceIdentifier,
     });
-  }, [sharedUrl, sendTabMutation]);
+  }, [sharedUrl, sendTabMutation, deviceIdentifier]);
 
   const clearSharedUrl = useCallback(() => {
     setSharedUrl(null);
