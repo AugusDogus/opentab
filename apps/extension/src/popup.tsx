@@ -1,14 +1,51 @@
-import { QueryClientProvider, useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
 
-import { authClient } from "~auth/auth-client"
-import { queryClient, trpc } from "~lib/trpc"
+import { authClient } from "~auth/auth-client";
+import { queryClient, trpc } from "~lib/trpc";
 
-import "~style.css"
+import "~style.css";
+
+const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
+
+const getDeviceIdentifier = async (): Promise<string> => {
+  const stored = await chrome.storage.local.get(DEVICE_IDENTIFIER_KEY);
+
+  if (stored[DEVICE_IDENTIFIER_KEY]) {
+    return stored[DEVICE_IDENTIFIER_KEY] as string;
+  }
+
+  const newId = `extension-${crypto.randomUUID()}`;
+  await chrome.storage.local.set({ [DEVICE_IDENTIFIER_KEY]: newId });
+  return newId;
+};
 
 function AuthenticatedView({ userName }: { userName: string }) {
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions())
-  const privateData = useQuery(trpc.privateData.queryOptions())
+  const devices = useQuery(trpc.device.list.queryOptions());
+  const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null);
+  const [deviceIdentifier, setDeviceIdentifier] = useState<string>("");
+
+  const sendTabMutation = useMutation(trpc.tab.send.mutationOptions());
+
+  useEffect(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      if (tabs[0]) {
+        setCurrentTab(tabs[0]);
+      }
+    });
+
+    getDeviceIdentifier().then(setDeviceIdentifier);
+  }, []);
+
+  const handleSendTab = useCallback(() => {
+    if (!currentTab?.url || !deviceIdentifier) return;
+
+    sendTabMutation.mutate({
+      url: currentTab.url,
+      title: currentTab.title,
+      sourceDeviceIdentifier: deviceIdentifier,
+    });
+  }, [currentTab, deviceIdentifier, sendTabMutation]);
 
   return (
     <div className="p-6 w-80 bg-neutral-950 text-neutral-100">
@@ -20,87 +57,101 @@ function AuthenticatedView({ userName }: { userName: string }) {
         </div>
         <button
           onClick={() => authClient.signOut()}
-          className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors">
+          className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors"
+        >
           sign out
         </button>
       </div>
 
-      {/* Data sections */}
+      {/* Send Tab Section */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <p className="text-xs text-neutral-600 uppercase tracking-wider">
-            health check
-          </p>
-          {healthCheck.isPending ? (
-            <p className="text-sm text-neutral-500">...</p>
-          ) : healthCheck.error ? (
-            <p className="text-sm text-red-400">{healthCheck.error.message}</p>
-          ) : (
-            <p className="text-sm text-emerald-400">{healthCheck.data}</p>
-          )}
+          <p className="text-xs text-neutral-600 uppercase tracking-wider">current tab</p>
+          <p className="text-sm text-neutral-300 truncate">{currentTab?.title ?? "..."}</p>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-xs text-neutral-600 uppercase tracking-wider">
-            private data
+        <button
+          onClick={handleSendTab}
+          disabled={!currentTab?.url || sendTabMutation.isPending}
+          className="w-full py-3 bg-emerald-600 text-white text-sm rounded hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {sendTabMutation.isPending ? "Sending..." : "Send to Devices"}
+        </button>
+
+        {sendTabMutation.isSuccess && (
+          <p className="text-sm text-emerald-400 text-center">
+            Sent to {sendTabMutation.data.sentToMobile + sendTabMutation.data.sentToExtensions}{" "}
+            device(s)
           </p>
-          {privateData.isPending ? (
+        )}
+
+        {sendTabMutation.isError && (
+          <p className="text-sm text-red-400 text-center">{sendTabMutation.error.message}</p>
+        )}
+
+        {/* Devices Section */}
+        <div className="space-y-2 pt-4 border-t border-neutral-900">
+          <p className="text-xs text-neutral-600 uppercase tracking-wider">registered devices</p>
+          {devices.isPending ? (
             <p className="text-sm text-neutral-500">...</p>
-          ) : privateData.error ? (
-            <p className="text-sm text-red-400">{privateData.error.message}</p>
+          ) : devices.error ? (
+            <p className="text-sm text-red-400">{devices.error.message}</p>
           ) : (
-            <div>
-              <p className="text-sm text-neutral-300">
-                {privateData.data?.message}
-              </p>
-              <p className="text-xs text-neutral-600 mt-1">
-                user: {privateData.data?.user.name}
-              </p>
+            <div className="space-y-1">
+              {devices.data?.map((device) => (
+                <div key={device.id} className="flex items-center gap-2">
+                  <span className="text-xs">{device.deviceType === "mobile" ? "📱" : "💻"}</span>
+                  <span className="text-sm text-neutral-300">
+                    {device.deviceName ?? device.deviceType}
+                  </span>
+                </div>
+              ))}
+              {devices.data?.length === 0 && (
+                <p className="text-sm text-neutral-500">No devices registered</p>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Branding */}
-      <div className="mt-8 pt-4 border-t border-neutral-900">
-        <p className="text-xs text-neutral-700 tracking-widest uppercase text-center">
-          opentab
-        </p>
+      <div className="mt-6 pt-4 border-t border-neutral-900">
+        <p className="text-xs text-neutral-700 tracking-widest uppercase text-center">opentab</p>
       </div>
     </div>
-  )
+  );
 }
 
 function IndexPopup() {
-  const { data, isPending, error } = authClient.useSession()
-  const [isLoading, setIsLoading] = useState(false)
+  const { data, isPending, error } = authClient.useSession();
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleGitHubSignIn() {
-    setIsLoading(true)
+    setIsLoading(true);
 
     const result = await authClient.signIn.social({
       provider: "github",
-      callbackURL: "/auth/success"
-    })
+      callbackURL: "/auth/success",
+    });
 
     if (result.data?.url) {
-      chrome.tabs.create({ url: result.data.url })
+      chrome.tabs.create({ url: result.data.url });
 
       const pollInterval = setInterval(async () => {
-        const session = await authClient.getSession()
+        const session = await authClient.getSession();
         if (session.data?.user) {
-          clearInterval(pollInterval)
-          setIsLoading(false)
-          window.location.reload()
+          clearInterval(pollInterval);
+          setIsLoading(false);
+          window.location.reload();
         }
-      }, 1000)
+      }, 1000);
 
       setTimeout(() => {
-        clearInterval(pollInterval)
-        setIsLoading(false)
-      }, 120000)
+        clearInterval(pollInterval);
+        setIsLoading(false);
+      }, 120000);
     } else {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -109,7 +160,7 @@ function IndexPopup() {
       <div className="flex items-center justify-center p-8 w-80 bg-neutral-950">
         <p className="text-neutral-500 text-sm">...</p>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -117,11 +168,11 @@ function IndexPopup() {
       <div className="flex flex-col items-center justify-center p-8 w-80 bg-neutral-950 gap-2">
         <p className="text-red-400 text-sm">{error.message}</p>
       </div>
-    )
+    );
   }
 
   if (data?.user) {
-    return <AuthenticatedView userName={data.user.name} />
+    return <AuthenticatedView userName={data.user.name} />;
   }
 
   return (
@@ -136,14 +187,15 @@ function IndexPopup() {
       <button
         onClick={handleGitHubSignIn}
         disabled={isLoading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-neutral-300 rounded text-sm border border-neutral-800 hover:border-neutral-700 hover:text-neutral-100 transition-all disabled:opacity-50">
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-neutral-300 rounded text-sm border border-neutral-800 hover:border-neutral-700 hover:text-neutral-100 transition-all disabled:opacity-50"
+      >
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
         </svg>
         {isLoading ? "..." : "github"}
       </button>
     </div>
-  )
+  );
 }
 
 function App() {
@@ -151,7 +203,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <IndexPopup />
     </QueryClientProvider>
-  )
+  );
 }
 
-export default App
+export default App;
