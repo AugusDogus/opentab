@@ -1,5 +1,5 @@
 {
-  "name": "opentab",
+  "name": "@opentab/extension",
   "displayName": "opentab",
   "version": "0.1.0",
   "description": "Send tabs to your devices.",
