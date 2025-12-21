@@ -79,7 +79,7 @@ function ShareModal({
 
 type AuthenticatedViewProps = {
   userName: string;
-  deviceIdentifier: string;
+  deviceIdentifier: string | null;
 };
 
 function AuthenticatedView({ userName, deviceIdentifier }: AuthenticatedViewProps) {
@@ -88,6 +88,8 @@ function AuthenticatedView({ userName, deviceIdentifier }: AuthenticatedViewProp
   const sendTabMutation = useMutation(trpc.tab.send.mutationOptions());
 
   const handleSendTestTab = useCallback(() => {
+    if (!deviceIdentifier) return;
+
     sendTabMutation.mutate({
       url: "https://example.com",
       title: "Test Tab",
