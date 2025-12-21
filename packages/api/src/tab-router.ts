@@ -61,6 +61,21 @@ const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<vo
 
   if (!response.ok) {
     console.error("Failed to send push notification:", await response.text());
+    return;
+  }
+
+  // Check individual message results
+  try {
+    const result = (await response.json()) as {
+      data?: Array<{ status: string; message?: string; details?: unknown }>;
+    };
+    for (const ticket of result.data ?? []) {
+      if (ticket.status === "error") {
+        console.error("Push notification error:", ticket.message, ticket.details);
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse push notification response:", e);
   }
 };
 
@@ -224,7 +239,10 @@ export const tabRouter = router({
       });
 
       if (!targetDevice) {
-        return;
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Device not found. Please register your device first.",
+        });
       }
 
       // First, yield any existing pending tabs
@@ -254,14 +272,20 @@ export const tabRouter = router({
       });
 
       try {
-        while (!signal?.aborted) {
+        // Guard against undefined signal to prevent infinite loop
+        if (!signal) {
+          console.warn("No abort signal provided for subscription");
+          return;
+        }
+
+        while (!signal.aborted) {
           // Wait for new tabs if queue is empty
           if (tabQueue.length === 0) {
             await new Promise<void>((resolve) => {
               resolveWait = resolve;
               // Also resolve if signal is aborted
               const abortHandler = () => resolve();
-              signal?.addEventListener("abort", abortHandler, { once: true });
+              signal.addEventListener("abort", abortHandler, { once: true });
             });
           }
 

@@ -21,7 +21,7 @@ type ShareModalProps = {
   onCancel: () => void;
   isSending: boolean;
   sendResult: { sentToMobile: number; sentToExtensions: number } | null;
-  sendError: Error | null;
+  sendError: { message: string } | null;
 };
 
 function ShareModal({
@@ -200,7 +200,7 @@ export default function Home() {
     if (data?.user) {
       registerDevice();
     }
-  }, [data?.user, registerDevice]);
+  }, [data?.user?.id, registerDevice]);
 
   const handleGitHubSignIn = useCallback(async () => {
     setIsLoading(true);

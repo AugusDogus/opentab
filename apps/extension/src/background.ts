@@ -121,12 +121,16 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 
   // Register device and start subscription
-  registerDevice().then(() => subscribeToTabs());
+  registerDevice()
+    .then(() => subscribeToTabs())
+    .catch((err) => console.error("Initialization failed:", err));
 });
 
 // Also register on startup
 chrome.runtime.onStartup.addListener(() => {
-  registerDevice().then(() => subscribeToTabs());
+  registerDevice()
+    .then(() => subscribeToTabs())
+    .catch((err) => console.error("Initialization failed:", err));
 });
 
 // Handle context menu clicks
