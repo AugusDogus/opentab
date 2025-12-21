@@ -1,5 +1,5 @@
 import * as Application from "expo-application";
-import Constants from "expo-constants";
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
@@ -13,13 +13,16 @@ export const getDeviceIdentifier = async (): Promise<string> => {
   }
 
   // Generate a new identifier based on platform
-  const baseId =
-    Platform.OS === "android"
-      ? (Application.getAndroidId() ?? crypto.randomUUID())
-      : crypto.randomUUID();
+  let baseId: string;
+  if (Platform.OS === "android") {
+    const androidId = await Application.getAndroidId();
+    baseId = androidId ?? Crypto.randomUUID();
+  } else {
+    baseId = Crypto.randomUUID();
+  }
 
-  const deviceName = Constants.deviceName ?? "unknown";
-  const newId = `mobile-${Platform.OS}-${baseId}-${deviceName}`;
+  // Don't include device name in identifier - it can change if user renames device
+  const newId = `mobile-${Platform.OS}-${baseId}`;
 
   // Persist the identifier
   await SecureStore.setItemAsync(DEVICE_IDENTIFIER_KEY, newId);

@@ -6,7 +6,6 @@ import { Platform } from "react-native";
 import { useEffect, useRef, useCallback } from "react";
 
 import { useDeviceIdentifier } from "@/hooks/use-device-identifier";
-import { getDeviceIdentifier } from "@/utils/device-identifier";
 import { trpc } from "@/utils/trpc";
 
 // Configure how notifications are handled when the app is foregrounded
@@ -72,7 +71,7 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const onUrlReceivedRef = useRef(options.onUrlReceived);
-  const deviceIdentifier = useDeviceIdentifier();
+  const { deviceIdentifier, isLoading: isDeviceIdLoading } = useDeviceIdentifier();
 
   // Keep the ref up to date with the latest callback
   useEffect(() => {
@@ -91,18 +90,22 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   );
 
   const registerDevice = useCallback(async () => {
+    if (!deviceIdentifier) {
+      console.log("Device identifier not yet loaded, skipping registration");
+      return;
+    }
+
     await setupNotificationChannel();
     const pushToken = await getPushToken();
-    const id = await getDeviceIdentifier();
     const deviceName = Constants.deviceName ?? `${Platform.OS} device`;
 
     registerDeviceMutation.mutate({
       deviceType: "mobile",
       deviceName,
       pushToken: pushToken ?? undefined,
-      deviceIdentifier: id,
+      deviceIdentifier,
     });
-  }, [registerDeviceMutation]);
+  }, [registerDeviceMutation, deviceIdentifier]);
 
   useEffect(() => {
     // Handle notifications received while app is foregrounded
@@ -128,7 +131,7 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
 
   return {
     registerDevice,
-    isRegistering: registerDeviceMutation.isPending,
+    isRegistering: registerDeviceMutation.isPending || isDeviceIdLoading,
     registrationError: registerDeviceMutation.error,
     deviceIdentifier,
   };

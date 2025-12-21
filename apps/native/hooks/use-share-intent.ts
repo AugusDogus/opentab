@@ -31,7 +31,7 @@ type UseShareIntentResult = {
 
 export const useShareIntent = (): UseShareIntentResult => {
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
-  const deviceIdentifier = useDeviceIdentifier();
+  const { deviceIdentifier } = useDeviceIdentifier();
 
   const sendTabMutation = useMutation(
     trpc.tab.send.mutationOptions({
