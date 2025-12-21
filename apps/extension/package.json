@@ -8,7 +8,8 @@
     "dev": "plasmo dev",
     "build": "plasmo build",
     "package": "plasmo package",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "bun scripts/patch-node-imports.ts"
   },
   "dependencies": {
     "@opentab/api": "workspace:*",
@@ -21,11 +22,12 @@
     "plasmo": "0.90.5",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tailwindcss": "3.4.1",
+    "tailwindcss": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@tailwindcss/postcss": "^4",
     "@types/chrome": "0.0.258",
     "@types/node": "20.11.5",
     "@types/react": "catalog:",
