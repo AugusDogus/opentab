@@ -42,8 +42,6 @@
     ],
     "permissions": [
       "contextMenus",
-      "notifications",
-      "alarms",
       "storage"
     ],
     "action": {
