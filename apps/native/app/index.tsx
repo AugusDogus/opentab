@@ -202,7 +202,7 @@ export default function Home() {
     if (data?.user) {
       registerDevice();
     }
-  }, [data?.user?.id, registerDevice]);
+  }, [data?.user, registerDevice]);
 
   const handleGitHubSignIn = useCallback(async () => {
     setIsLoading(true);

@@ -71,6 +71,7 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const onUrlReceivedRef = useRef(options.onUrlReceived);
+  const hasRegisteredRef = useRef(false);
   const { deviceIdentifier, isLoading: isDeviceIdLoading } = useDeviceIdentifier();
 
   // Keep the ref up to date with the latest callback
@@ -94,6 +95,14 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
       console.log("Device identifier not yet loaded, skipping registration");
       return;
     }
+
+    // Only register once per app session to avoid duplicate registrations
+    if (hasRegisteredRef.current) {
+      console.log("Device already registered in this session, skipping");
+      return;
+    }
+
+    hasRegisteredRef.current = true;
 
     await setupNotificationChannel();
     const pushToken = await getPushToken();

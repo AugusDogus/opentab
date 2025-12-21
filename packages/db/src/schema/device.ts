@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, unique } from "drizzle-orm/sqlite-core";
 
 import { user, session, account } from "./auth";
 
@@ -27,6 +27,8 @@ export const device = sqliteTable(
   (table) => [
     index("device_userId_idx").on(table.userId),
     index("device_identifier_idx").on(table.deviceIdentifier),
+    // Prevent duplicate device registrations for the same user
+    unique("device_user_identifier_unique").on(table.userId, table.deviceIdentifier),
   ],
 );
 
