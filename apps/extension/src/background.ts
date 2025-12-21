@@ -80,11 +80,20 @@ const sendTabToDevices = async (url: string, title?: string): Promise<void> => {
   }
 };
 
+// Track current subscription for cleanup
+let currentUnsubscribe: { unsubscribe: () => void } | null = null;
+
 // Subscribe to new tabs via SSE
 const subscribeToTabs = async (): Promise<void> => {
   const deviceIdentifier = await getDeviceIdentifier();
 
-  const _unsubscribe = subscriptionClient.tab.onNewTab.subscribe(
+  // Cleanup previous subscription if exists
+  if (currentUnsubscribe) {
+    currentUnsubscribe.unsubscribe();
+    currentUnsubscribe = null;
+  }
+
+  currentUnsubscribe = subscriptionClient.tab.onNewTab.subscribe(
     { deviceIdentifier },
     {
       onData: async (tab) => {
@@ -97,19 +106,18 @@ const subscribeToTabs = async (): Promise<void> => {
       },
       onError: (error) => {
         console.log("Tab subscription error:", error);
+        currentUnsubscribe = null;
         // Retry subscription after a delay
         setTimeout(() => subscribeToTabs(), 5000);
       },
       onComplete: () => {
         console.log("Tab subscription completed, reconnecting...");
+        currentUnsubscribe = null;
         // Reconnect on complete
         setTimeout(() => subscribeToTabs(), 1000);
       },
     },
   );
-
-  // Store unsubscribe for cleanup if needed
-  chrome.storage.local.set({ _subscriptionActive: true });
 };
 
 // Create context menu on install
