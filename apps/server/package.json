@@ -1,7 +1,7 @@
 {
   "name": "server",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "build": "bun run build.ts",
     "typecheck": "tsc --noEmit",
@@ -17,9 +17,7 @@
     "@t3-oss/env-core": "catalog:",
     "@trpc/server": "catalog:",
     "better-auth": "catalog:",
-    "bun-plugin-tailwind": "^0.1.2",
     "hono": "catalog:",
-    "tailwindcss": "^4.1.18",
     "zod": "catalog:"
   },
   "devDependencies": {

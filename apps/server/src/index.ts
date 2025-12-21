@@ -7,8 +7,6 @@ import { logger } from "hono/logger";
 
 import { env } from "./env";
 
-import authSuccessPage from "../public/auth-success.html";
-
 const auth = initAuth({
   baseUrl: env.BETTER_AUTH_URL,
   extensionId: env.CHROME_EXTENSION_ID,
@@ -30,20 +28,16 @@ app.use(
   }),
 );
 
-// Use Bun.serve with routes for HTML pages + Hono for API
-const server = Bun.serve({
-  port: env.PORT,
-  
-  // HTML routes with Tailwind (bundled by Bun)
-  routes: {
-    // Auth success page - shown after OAuth callback
-    "/auth/success": authSuccessPage,
-  },
-  
-  development: process.env.NODE_ENV !== "production",
-  
-  // Fallback to Hono for all other routes
-  fetch: app.fetch,
+// Auth success page - shown after OAuth callback
+app.get("/auth/success", async (c) => {
+  const html = await Bun.file(
+    new URL("../public/auth-success.html", import.meta.url).pathname
+  ).text();
+  return c.html(html);
 });
 
-console.log(`Started development server: ${server.url}`);
+// Export for Bun (local dev) and Vercel (serverless)
+export default {
+  port: env.PORT,
+  fetch: app.fetch,
+};
