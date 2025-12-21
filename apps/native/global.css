@@ -12,12 +12,14 @@
 
 @layer theme {
   :root {
-    /* Light theme overrides (must match dark theme variables) */
-    --surface: oklch(0.98 0.005 285.89);
-    --surface-secondary: oklch(0.95 0.004 285.89);
-    --default: oklch(0.92 0.005 286.033);
-    --overlay: oklch(0.96 0.005 271.19);
-    --divider: oklch(0.90 0.005 286.033);
+    @variant light {
+      /* Light theme overrides */
+      --surface: oklch(0.98 0.005 285.89);
+      --surface-secondary: oklch(0.95 0.004 285.89);
+      --default: oklch(0.92 0.005 286.033);
+      --overlay: oklch(0.96 0.005 271.19);
+      --divider: oklch(0.90 0.005 286.033);
+    }
 
     @variant dark {
       /* Darker grays for a more minimal aesthetic */
