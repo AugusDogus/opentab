@@ -12,6 +12,8 @@ export const env = createEnv({
     // Optional: specific Chrome extension ID for production (more secure than wildcard)
     CHROME_EXTENSION_ID: z.string().optional(),
   },
+  clientPrefix: "PUBLIC_",
+  client: {},
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
 });
