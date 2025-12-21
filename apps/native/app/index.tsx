@@ -1,19 +1,99 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 
+import { useDeviceRegistration } from "@/hooks/use-device-registration";
+import { useShareIntent } from "@/hooks/use-share-intent";
 import { authClient } from "@/lib/auth-client";
 import { queryClient, trpc } from "@/utils/trpc";
 
 const StyledIonicons = withUniwind(Ionicons);
 const StyledSafeAreaView = withUniwind(SafeAreaView);
 
-function AuthenticatedView({ userName }: { userName: string }) {
+type ShareModalProps = {
+  visible: boolean;
+  url: string | null;
+  onSend: () => void;
+  onCancel: () => void;
+  isSending: boolean;
+  sendResult: { sentToMobile: number; sentToExtensions: number } | null;
+  sendError: Error | null;
+};
+
+function ShareModal({
+  visible,
+  url,
+  onSend,
+  onCancel,
+  isSending,
+  sendResult,
+  sendError,
+}: ShareModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View className="flex-1 items-center justify-center bg-black/50 px-6">
+        <View className="w-full max-w-sm rounded-xl bg-surface p-6 gap-4">
+          <Text className="text-lg font-medium text-foreground text-center">Send to Devices</Text>
+
+          <Text className="text-sm text-muted text-center" numberOfLines={2}>
+            {url}
+          </Text>
+
+          {sendResult && (
+            <Text className="text-sm text-emerald-400 text-center">
+              Sent to {sendResult.sentToMobile} mobile and {sendResult.sentToExtensions} extension
+              devices
+            </Text>
+          )}
+
+          {sendError && (
+            <Text className="text-sm text-danger text-center">{sendError.message}</Text>
+          )}
+
+          <View className="flex-row gap-3 mt-2">
+            <Pressable
+              onPress={onCancel}
+              className="flex-1 py-3 rounded-lg border border-divider active:opacity-70"
+            >
+              <Text className="text-sm text-muted text-center">Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={onSend}
+              disabled={isSending || sendResult !== null}
+              className="flex-1 py-3 rounded-lg bg-emerald-600 active:opacity-70 disabled:opacity-50"
+            >
+              <Text className="text-sm text-white text-center">
+                {isSending ? "Sending..." : sendResult ? "Sent!" : "Send"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+type AuthenticatedViewProps = {
+  userName: string;
+  deviceIdentifier: string;
+};
+
+function AuthenticatedView({ userName, deviceIdentifier }: AuthenticatedViewProps) {
   const healthCheck = useQuery(trpc.healthCheck.queryOptions());
-  const privateData = useQuery(trpc.privateData.queryOptions());
+  const devices = useQuery(trpc.device.list.queryOptions());
+  const sendTabMutation = useMutation(trpc.tab.send.mutationOptions());
+
+  const handleSendTestTab = useCallback(() => {
+    sendTabMutation.mutate({
+      url: "https://example.com",
+      title: "Test Tab",
+      sourceDeviceIdentifier: deviceIdentifier,
+    });
+  }, [sendTabMutation, deviceIdentifier]);
 
   return (
     <View className="flex-1 p-6">
@@ -48,18 +128,45 @@ function AuthenticatedView({ userName }: { userName: string }) {
         </View>
 
         <View className="gap-2">
-          <Text className="text-xs tracking-wider uppercase text-muted">private data</Text>
-          {privateData.isPending ? (
+          <Text className="text-xs tracking-wider uppercase text-muted">registered devices</Text>
+          {devices.isPending ? (
             <Text className="text-sm text-muted">...</Text>
-          ) : privateData.error ? (
-            <Text className="text-sm text-danger">{privateData.error.message}</Text>
+          ) : devices.error ? (
+            <Text className="text-sm text-danger">{devices.error.message}</Text>
           ) : (
-            <View>
-              <Text className="text-sm text-foreground">{privateData.data?.message}</Text>
-              <Text className="mt-1 text-xs text-muted">user: {privateData.data?.user.name}</Text>
+            <View className="gap-1">
+              {devices.data?.map((device) => (
+                <Text key={device.id} className="text-sm text-foreground">
+                  {device.deviceName ?? device.deviceType} ({device.deviceType})
+                </Text>
+              ))}
+              {devices.data?.length === 0 && (
+                <Text className="text-sm text-muted">No devices registered</Text>
+              )}
             </View>
           )}
         </View>
+
+        <Pressable
+          onPress={handleSendTestTab}
+          disabled={sendTabMutation.isPending}
+          className="px-4 py-3 rounded-lg bg-surface border border-divider active:opacity-70 disabled:opacity-50"
+        >
+          <Text className="text-sm text-foreground text-center">
+            {sendTabMutation.isPending ? "Sending..." : "Send Test Tab to Devices"}
+          </Text>
+        </Pressable>
+
+        {sendTabMutation.isSuccess && (
+          <Text className="text-sm text-emerald-400">
+            Sent to {sendTabMutation.data.sentToMobile} mobile and{" "}
+            {sendTabMutation.data.sentToExtensions} extension devices
+          </Text>
+        )}
+
+        {sendTabMutation.isError && (
+          <Text className="text-sm text-danger">{sendTabMutation.error.message}</Text>
+        )}
       </View>
 
       {/* Branding */}
@@ -74,14 +181,35 @@ export default function Home() {
   const { data, isPending, error } = authClient.useSession();
   const [isLoading, setIsLoading] = useState(false);
 
-  async function handleGitHubSignIn() {
+  const handleUrlReceived = useCallback((url: string) => {
+    // Open the URL in the default browser
+    Linking.openURL(url).catch((err) => {
+      console.error("Failed to open URL:", err);
+    });
+  }, []);
+
+  const { registerDevice, deviceIdentifier } = useDeviceRegistration({
+    onUrlReceived: handleUrlReceived,
+  });
+
+  const { sharedUrl, sendToDevices, isSending, sendResult, sendError, clearSharedUrl } =
+    useShareIntent();
+
+  // Register device when user is authenticated
+  useEffect(() => {
+    if (data?.user) {
+      registerDevice();
+    }
+  }, [data?.user, registerDevice]);
+
+  const handleGitHubSignIn = useCallback(async () => {
     setIsLoading(true);
     await authClient.signIn.social({
       provider: "github",
       callbackURL: "/", // Root path - expo plugin converts to deep link (exp://...)
     });
     setIsLoading(false);
-  }
+  }, []);
 
   if (isPending) {
     return (
@@ -102,7 +230,16 @@ export default function Home() {
   if (data?.user) {
     return (
       <StyledSafeAreaView className="flex-1 bg-background">
-        <AuthenticatedView userName={data.user.name} />
+        <AuthenticatedView userName={data.user.name} deviceIdentifier={deviceIdentifier} />
+        <ShareModal
+          visible={sharedUrl !== null}
+          url={sharedUrl}
+          onSend={sendToDevices}
+          onCancel={clearSharedUrl}
+          isSending={isSending}
+          sendResult={sendResult}
+          sendError={sendError}
+        />
       </StyledSafeAreaView>
     );
   }

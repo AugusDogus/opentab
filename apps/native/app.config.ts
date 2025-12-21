@@ -15,6 +15,18 @@ export default {
       },
       package: "com.augusdogus.opentab",
       googleServicesFile: process.env.GOOGLE_SERVICES_FILE,
+      intentFilters: [
+        {
+          action: "android.intent.action.SEND",
+          category: ["android.intent.category.DEFAULT"],
+          data: [{ mimeType: "text/plain" }],
+        },
+        {
+          action: "android.intent.action.VIEW",
+          category: ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"],
+          data: [{ scheme: "http" }, { scheme: "https" }],
+        },
+      ],
     },
     name: "opentab",
     slug: "opentab",
