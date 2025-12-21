@@ -29,11 +29,7 @@ const log = (msg: string, color: Color = "reset") =>
 /**
  * Recursively find files matching a pattern
  */
-const findFiles = (
-  dir: string,
-  pattern: RegExp,
-  results: string[] = []
-): string[] => {
+const findFiles = (dir: string, pattern: RegExp, results: string[] = []): string[] => {
   if (!existsSync(dir)) return results;
 
   try {
@@ -68,10 +64,7 @@ const findPackageFiles = (): string[] => {
   const files: string[] = [];
 
   // Search in specific known locations
-  const searchPaths = [
-    join(nodeModules, "jiti"),
-    join(nodeModules, "@tailwindcss"),
-  ];
+  const searchPaths = [join(nodeModules, "jiti"), join(nodeModules, "@tailwindcss")];
 
   for (const searchPath of searchPaths) {
     if (existsSync(searchPath)) {
@@ -95,8 +88,7 @@ interface PatchResult {
 const patchFile = async (filePath: string): Promise<PatchResult> => {
   try {
     const content = await Bun.file(filePath).text();
-    const hasNodeImports =
-      content.includes('require("node:') || content.includes("require('node:");
+    const hasNodeImports = content.includes('require("node:') || content.includes("require('node:");
 
     if (!hasNodeImports) {
       return { patched: false, skipped: true };
