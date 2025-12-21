@@ -8,6 +8,33 @@ import { pendingTab } from "@opentab/db/schema/pending-tab";
 
 import { protectedProcedure, router } from "./index";
 
+// Simple event emitter for notifying subscribers of new tabs
+type TabEventListener = (tab: { id: string; url: string; title: string | null }) => void;
+const tabEventListeners = new Map<string, Set<TabEventListener>>();
+
+const emitNewTab = (
+  targetDeviceId: string,
+  tab: { id: string; url: string; title: string | null },
+): void => {
+  const listeners = tabEventListeners.get(targetDeviceId);
+  if (listeners) {
+    listeners.forEach((listener) => listener(tab));
+  }
+};
+
+const addTabListener = (deviceId: string, listener: TabEventListener): (() => void) => {
+  const listeners = tabEventListeners.get(deviceId) ?? new Set();
+  listeners.add(listener);
+  tabEventListeners.set(deviceId, listeners);
+
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      tabEventListeners.delete(deviceId);
+    }
+  };
+};
+
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 type ExpoPushMessage = {
@@ -102,7 +129,7 @@ export const tabRouter = router({
 
     await sendExpoPushNotification(pushMessages);
 
-    // Create pending tabs for browser extensions
+    // Create pending tabs for browser extensions and emit events
     const pendingTabs = extensionDevices.map((d) => ({
       id: crypto.randomUUID(),
       userId,
@@ -114,6 +141,15 @@ export const tabRouter = router({
 
     if (pendingTabs.length > 0) {
       await db.insert(pendingTab).values(pendingTabs);
+
+      // Emit events to notify subscribers
+      pendingTabs.forEach((tab) => {
+        emitNewTab(tab.targetDeviceId, {
+          id: tab.id,
+          url: tab.url,
+          title: tab.title,
+        });
+      });
     }
 
     return {
@@ -169,5 +205,74 @@ export const tabRouter = router({
         .where(eq(pendingTab.id, input.tabId));
 
       return { success: true };
+    }),
+
+  // SSE subscription for receiving tabs in real-time
+  onNewTab: protectedProcedure
+    .input(
+      z.object({
+        deviceIdentifier: z.string(),
+        lastEventId: z.string().optional(),
+      }),
+    )
+    .subscription(async function* ({ ctx, input, signal }) {
+      const userId = ctx.session.user.id;
+
+      // Find the device
+      const targetDevice = await db.query.device.findFirst({
+        where: and(eq(device.userId, userId), eq(device.deviceIdentifier, input.deviceIdentifier)),
+      });
+
+      if (!targetDevice) {
+        return;
+      }
+
+      // First, yield any existing pending tabs
+      const existingTabs = await db.query.pendingTab.findMany({
+        where: and(eq(pendingTab.targetDeviceId, targetDevice.id), eq(pendingTab.delivered, false)),
+        orderBy: (tab, { asc }) => [asc(tab.createdAt)],
+      });
+
+      for (const tab of existingTabs) {
+        yield {
+          id: tab.id,
+          url: tab.url,
+          title: tab.title,
+        };
+      }
+
+      // Then listen for new tabs
+      const tabQueue: Array<{ id: string; url: string; title: string | null }> = [];
+      let resolveWait: (() => void) | null = null;
+
+      const cleanup = addTabListener(targetDevice.id, (tab) => {
+        tabQueue.push(tab);
+        if (resolveWait) {
+          resolveWait();
+          resolveWait = null;
+        }
+      });
+
+      try {
+        while (!signal?.aborted) {
+          // Wait for new tabs if queue is empty
+          if (tabQueue.length === 0) {
+            await new Promise<void>((resolve) => {
+              resolveWait = resolve;
+              // Also resolve if signal is aborted
+              const abortHandler = () => resolve();
+              signal?.addEventListener("abort", abortHandler, { once: true });
+            });
+          }
+
+          // Yield all queued tabs
+          while (tabQueue.length > 0) {
+            const tab = tabQueue.shift()!;
+            yield tab;
+          }
+        }
+      } finally {
+        cleanup();
+      }
     }),
 });
