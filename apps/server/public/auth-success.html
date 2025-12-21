@@ -4,31 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Signed in | opentab</title>
-    <link rel="stylesheet" href="tailwindcss" />
+    <link href="./styles.css" rel="stylesheet" />
     <style>
       @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
       body { font-family: 'JetBrains Mono', monospace; }
     </style>
   </head>
-  <body class="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-8">
-    <div class="text-center space-y-6">
+  <body class="flex flex-col justify-center items-center p-8 min-h-screen bg-neutral-950 text-neutral-100">
+    <div class="space-y-6 text-center">
       <!-- Simple checkmark -->
-      <div class="text-emerald-400 text-4xl mb-2">✓</div>
+      <div class="mb-2 text-4xl text-emerald-400">✓</div>
       
       <!-- Message -->
       <div class="space-y-2">
         <h1 class="text-lg font-medium">signed in</h1>
-        <p class="text-neutral-500 text-sm">you can close this tab</p>
+        <p class="text-sm text-neutral-500">you can close this tab</p>
       </div>
 
       <!-- Countdown -->
-      <p class="text-neutral-600 text-xs">
+      <p class="text-xs text-neutral-600">
         closing in <span id="countdown">3</span>s
       </p>
     </div>
 
     <!-- Branding -->
-    <div class="fixed bottom-8 text-neutral-700 text-xs tracking-widest uppercase">
+    <div class="fixed bottom-8 text-xs tracking-widest uppercase text-neutral-700">
       opentab
     </div>
 

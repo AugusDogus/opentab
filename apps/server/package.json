@@ -3,7 +3,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsdown",
+    "build": "bun run build.ts",
     "typecheck": "tsc --noEmit",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "cd ../.. && bun --config=apps/server/bunfig.toml --env-file=apps/server/.env --hot apps/server/src/index.ts",
@@ -25,7 +25,6 @@
   "devDependencies": {
     "@opentab/config": "workspace:*",
     "@types/bun": "catalog:",
-    "tsdown": "^0.16.5",
     "typescript": "catalog:"
   }
 }
