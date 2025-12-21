@@ -2,34 +2,108 @@
 
 Send tabs to your devices.
 
-## Structure
+## Tech Stack
 
-This is a monorepo using [Bun workspaces](https://bun.sh/docs/install/workspaces) and [Turborepo](https://turbo.build/repo):
+- [Expo](https://expo.dev/) - React Native framework with SDK 54
+- [Plasmo](https://docs.plasmo.com/) - Browser extension framework
+- [Hono](https://hono.dev/) - Lightweight web framework for the API server
+- [tRPC](https://trpc.io/) v11 - Type-safe API layer
+- [Better Auth](https://www.better-auth.com/) - Authentication
+- [Drizzle ORM](https://orm.drizzle.team/) - Database ORM
+- [Turso](https://turso.tech/) - Serverless SQLite database (libSQL)
+- [Turborepo](https://turbo.build/) - Monorepo tooling
+- [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [Tailwind CSS](https://tailwindcss.com/) & [NativeWind](https://www.nativewind.dev/) - Styling
 
-- `apps/extension` — Chrome extension
-- `apps/web` — Next.js backend (coming soon)
-- `apps/native` — Expo app (coming soon)
+## Project Structure
+
+The monorepo is organized using [Turborepo](https://turborepo.com) and contains:
+
+```text
+opentab/
+├── apps/
+│   ├── extension/         # Chrome extension
+│   │   ├─ Plasmo framework
+│   │   ├─ React 19
+│   │   ├─ Tailwind CSS
+│   │   └─ Typesafe API calls using tRPC
+│   ├── native/            # React Native mobile app
+│   │   ├─ Expo SDK 54
+│   │   ├─ React Native using React 19
+│   │   ├─ Navigation using Expo Router
+│   │   ├─ Tailwind using NativeWind
+│   │   └─ Typesafe API calls using tRPC
+│   └── server/            # Hono API server
+│       ├─ Hono with Bun runtime
+│       └─ E2E Typesafe API Server & Client
+├── packages/
+│   ├── api/               # tRPC v11 router definition
+│   ├── auth/              # Better Auth configuration
+│   ├── config/            # Shared TypeScript configuration
+│   └── db/                # Drizzle ORM with Turso (libSQL)
+```
 
 ## Getting Started
 
+### Prerequisites
+
+- [Bun](https://bun.sh/) installed
+- [Turso](https://turso.tech/) account and database created
+- iOS/Android device or simulator/emulator (for native app)
+
+### 1. Clone and Install
+
 ```bash
+git clone https://github.com/AugusDogus/opentab
+cd opentab
 bun install
 ```
 
-## Development
+### 2. Configure Environment Variables
+
+Copy the example env files and fill in your values for each app.
+
+### 3. Push Database Schema
 
 ```bash
-# Run all dev servers
-bun run dev
-
-# Run a specific app
-turbo run dev --filter=@opentab/extension
+bun db:push
 ```
 
-For the Chrome extension, load `apps/extension/build` as an unpacked extension.
-
-## Build
+### 4. Start Development
 
 ```bash
-bun run build
+# Start all apps
+bun dev
+
+# Or start specific apps
+bun dev:extension  # Chrome extension
+bun dev:native     # Expo app
+bun dev:server     # API server
+```
+
+### 5. Load the Extension
+
+For the Chrome extension, load `apps/extension/build/chrome-mv3-dev` as an unpacked extension in Chrome.
+
+## Available Scripts
+
+```bash
+# Development
+bun dev              # Start all apps in parallel
+bun dev:extension    # Start Chrome extension
+bun dev:native       # Start Expo app
+bun dev:server       # Start API server
+
+# Database
+bun db:push          # Push schema changes to Turso
+bun db:generate      # Generate migrations
+bun db:migrate       # Run migrations
+bun db:studio        # Open Drizzle Studio
+
+# Linting & Formatting
+bun lint             # Run oxlint and oxfmt
+bun typecheck        # Run TypeScript checks
+
+# Building
+bun build            # Build all packages
 ```

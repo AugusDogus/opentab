@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
+    "dev": "cd ../.. && bun --config=apps/server/bunfig.toml --env-file=apps/server/.env --hot apps/server/src/index.ts",
+    "start": "bun run dist/index.js"
+  },
+  "dependencies": {
+    "@hono/trpc-server": "^0.4.0",
+    "@opentab/api": "workspace:*",
+    "@opentab/auth": "workspace:*",
+    "@opentab/db": "workspace:*",
+    "@t3-oss/env-core": "catalog:",
+    "@trpc/server": "catalog:",
+    "better-auth": "catalog:",
+    "bun-plugin-tailwind": "^0.1.2",
+    "hono": "catalog:",
+    "tailwindcss": "^4.1.18",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@opentab/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "tsdown": "^0.16.5",
+    "typescript": "catalog:"
+  }
+}
