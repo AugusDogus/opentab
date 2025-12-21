@@ -25,7 +25,12 @@ export default {
     },
     name: "opentab",
     slug: "opentab",
-    plugins: ["expo-font", "expo-system-ui", "expo-web-browser"],
+    plugins: [
+      "expo-font",
+      "expo-system-ui",
+      "expo-web-browser",
+      "@rnrepo/expo-config-plugin",
+    ],
     experiments: {
       typedRoutes: true,
       reactCompiler: true,

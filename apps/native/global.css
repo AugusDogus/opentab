@@ -2,4 +2,30 @@
 @import "uniwind";
 @import "heroui-native/styles";
 
-@source './node_modules/heroui-native/lib';
+@source "../../node_modules/heroui-native/lib";
+
+/* Custom theme overrides */
+@theme {
+  /* Reduce border radius for sharper look */
+  --radius: 0.375rem;
+}
+
+@layer theme {
+  :root {
+    /* Light theme overrides (must match dark theme variables) */
+    --surface: oklch(0.98 0.005 285.89);
+    --surface-secondary: oklch(0.95 0.004 285.89);
+    --default: oklch(0.92 0.005 286.033);
+    --overlay: oklch(0.96 0.005 271.19);
+    --divider: oklch(0.90 0.005 286.033);
+
+    @variant dark {
+      /* Darker grays for a more minimal aesthetic */
+      --surface: oklch(0.15 0.005 285.89);
+      --surface-secondary: oklch(0.12 0.004 285.89);
+      --default: oklch(0.18 0.005 286.033);
+      --overlay: oklch(0.18 0.005 271.19);
+      --divider: oklch(0.25 0.005 286.033);
+    }
+  }
+}
