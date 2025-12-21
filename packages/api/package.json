@@ -17,8 +17,6 @@
     "@opentab/db": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
-    "dotenv": "catalog:",
-    "hono": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,28 +1,32 @@
 {
   "name": "server",
+  "private": true,
   "type": "module",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "bun run build.ts",
-    "typecheck": "tsc --noEmit",
-    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "dev": "cd ../.. && bun --config=apps/server/bunfig.toml --env-file=apps/server/.env --hot apps/server/src/index.ts",
-    "start": "bun run dist/index.js"
+    "build": "next build",
+    "dev": "next dev --turbopack",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hono/trpc-server": "^0.4.0",
     "@opentab/api": "workspace:*",
     "@opentab/auth": "workspace:*",
     "@opentab/db": "workspace:*",
-    "@t3-oss/env-core": "catalog:",
+    "@t3-oss/env-nextjs": "^0.13.10",
     "@trpc/server": "catalog:",
     "better-auth": "catalog:",
-    "hono": "catalog:",
+    "next": "^16.1.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@opentab/config": "workspace:*",
-    "@types/bun": "catalog:",
+    "@tailwindcss/postcss": "^4",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jiti": "^2.6.1",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }
 }

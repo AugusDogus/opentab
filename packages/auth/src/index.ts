@@ -5,10 +5,7 @@ import * as schema from "@opentab/db/schema/auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
-export function initAuth(options: {
-  baseUrl: string;
-  extensionId?: string;
-}) {
+export function initAuth(options: { baseUrl: string; extensionId?: string }) {
   const config = {
     database: drizzleAdapter(db, {
       provider: "sqlite",
@@ -20,9 +17,7 @@ export function initAuth(options: {
       "exp://",
       "opentab://",
       // Chrome extension (use specific ID in production, wildcard for dev)
-      options.extensionId
-        ? `chrome-extension://${options.extensionId}`
-        : "chrome-extension://*",
+      options.extensionId ? `chrome-extension://${options.extensionId}` : "chrome-extension://*",
       // Allow the server's own URL for redirects
       options.baseUrl,
     ],

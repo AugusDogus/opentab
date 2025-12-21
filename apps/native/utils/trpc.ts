@@ -1,4 +1,4 @@
-import type { AppRouter } from "@opentab/api/routers/index";
+import type { AppRouter } from "@opentab/api/routers";
 
 import { QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
@@ -12,7 +12,7 @@ export const queryClient = new QueryClient();
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${env.EXPO_PUBLIC_SERVER_URL}/trpc`,
+      url: `${env.EXPO_PUBLIC_SERVER_URL}/api/trpc`,
       headers() {
         const headers = new Map<string, string>();
         const cookies = authClient.getCookie();
