@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signed in | opentab</title>
+    <link rel="stylesheet" href="tailwindcss" />
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+      body { font-family: 'JetBrains Mono', monospace; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-8">
+    <div class="text-center space-y-6">
+      <!-- Simple checkmark -->
+      <div class="text-emerald-400 text-4xl mb-2">✓</div>
+      
+      <!-- Message -->
+      <div class="space-y-2">
+        <h1 class="text-lg font-medium">signed in</h1>
+        <p class="text-neutral-500 text-sm">you can close this tab</p>
+      </div>
+
+      <!-- Countdown -->
+      <p class="text-neutral-600 text-xs">
+        closing in <span id="countdown">3</span>s
+      </p>
+    </div>
+
+    <!-- Branding -->
+    <div class="fixed bottom-8 text-neutral-700 text-xs tracking-widest uppercase">
+      opentab
+    </div>
+
+    <script>
+      let seconds = 3;
+      const countdownEl = document.getElementById('countdown');
+      
+      const interval = setInterval(() => {
+        seconds--;
+        countdownEl.textContent = seconds;
+        
+        if (seconds <= 0) {
+          clearInterval(interval);
+          window.close();
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>
