@@ -1,5 +1,5 @@
 import type { AppRouter } from "@opentab/api/routers";
-import { createTRPCClient, httpBatchLink, unstable_httpSubscriptionLink } from "@trpc/client";
+import { createTRPCClient, httpBatchLink, httpSubscriptionLink } from "@trpc/client";
 
 import { env } from "~env";
 
@@ -24,7 +24,7 @@ const trpcClient = createTRPCClient<AppRouter>({
 // Create subscription client with SSE link
 const subscriptionClient = createTRPCClient<AppRouter>({
   links: [
-    unstable_httpSubscriptionLink({
+    httpSubscriptionLink({
       url: `${env.PLASMO_PUBLIC_SERVER_URL}/api/trpc`,
       eventSourceOptions: () => ({
         withCredentials: true,
@@ -97,12 +97,24 @@ const subscribeToTabs = async (): Promise<void> => {
     { deviceIdentifier },
     {
       onData: async (tab) => {
-        // Open the tab in a new tab
-        await chrome.tabs.create({ url: tab.url, active: false });
+        try {
+          // Open the tab in a new tab
+          const createdTab = await chrome.tabs.create({ url: tab.url, active: false });
 
-        // Mark as delivered
-        await trpcClient.tab.markDelivered.mutate({ tabId: tab.id });
-        console.log("Opened tab from subscription:", tab.url);
+          try {
+            // Mark as delivered
+            await trpcClient.tab.markDelivered.mutate({ tabId: tab.id });
+            console.log("Opened tab from subscription:", tab.url);
+          } catch (markError) {
+            // If marking failed, close the tab to prevent duplicates on reconnect
+            console.error("Failed to mark tab as delivered, closing tab:", markError);
+            if (createdTab?.id) {
+              await chrome.tabs.remove(createdTab.id);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to open tab from subscription:", error);
+        }
       },
       onError: (error) => {
         console.log("Tab subscription error:", error);
