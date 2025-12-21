@@ -2,11 +2,10 @@ import "@/global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { HeroUINativeProvider, useThemeColor } from "heroui-native";
+import { HeroUINativeProvider } from "heroui-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
-import { ThemeToggle } from "@/components/theme-toggle";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 import { queryClient } from "@/utils/trpc";
 
@@ -14,18 +13,8 @@ import { queryClient } from "@/utils/trpc";
 WebBrowser.maybeCompleteAuthSession();
 
 function StackLayout() {
-  const foregroundColor = useThemeColor("foreground");
-  const backgroundColor = useThemeColor("background");
-
   return (
-    <Stack
-      screenOptions={{
-        headerTintColor: foregroundColor,
-        headerStyle: { backgroundColor },
-        headerTitleStyle: { fontWeight: "600", color: foregroundColor },
-        headerRight: () => <ThemeToggle />,
-      }}
-    >
+    <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
     </Stack>
   );

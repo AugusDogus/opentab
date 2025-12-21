@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { isDevice } from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -71,8 +71,10 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const onUrlReceivedRef = useRef(options.onUrlReceived);
-  const hasRegisteredRef = useRef(false);
   const { deviceIdentifier, isLoading: isDeviceIdLoading } = useDeviceIdentifier();
+
+  // Query the devices list to check if this device is already registered
+  const devices = useQuery(trpc.device.list.queryOptions());
 
   // Keep the ref up to date with the latest callback
   useEffect(() => {
@@ -83,6 +85,7 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
     trpc.device.register.mutationOptions({
       onSuccess: (data) => {
         console.log("Device registered successfully:", data);
+        devices.refetch();
       },
       onError: (error) => {
         console.error("Failed to register device:", error);
@@ -96,13 +99,25 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
       return;
     }
 
-    // Only register once per app session to avoid duplicate registrations
-    if (hasRegisteredRef.current) {
-      console.log("Device already registered in this session, skipping");
+    if (!devices.data) {
+      console.log("Devices list not yet loaded, skipping registration");
       return;
     }
 
-    hasRegisteredRef.current = true;
+    if (registerDeviceMutation.isPending) {
+      console.log("Registration already in progress, skipping");
+      return;
+    }
+
+    // Check if this device is already registered
+    const isAlreadyRegistered = devices.data.some(
+      (device) => device.deviceIdentifier === deviceIdentifier,
+    );
+
+    if (isAlreadyRegistered) {
+      console.log("Device already registered, skipping");
+      return;
+    }
 
     await setupNotificationChannel();
     const pushToken = await getPushToken();
@@ -114,7 +129,7 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
       pushToken: pushToken ?? undefined,
       deviceIdentifier,
     });
-  }, [registerDeviceMutation, deviceIdentifier]);
+  }, [registerDeviceMutation, deviceIdentifier, devices.data]);
 
   useEffect(() => {
     // Handle notifications received while app is foregrounded
