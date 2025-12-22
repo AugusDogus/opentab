@@ -18,7 +18,6 @@
     "next": "^16.1.0",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "web-push": "^3.6.7",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -26,7 +25,6 @@
     "@tailwindcss/postcss": "^4",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@types/web-push": "^3.6.4",
     "jiti": "^2.6.1",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"

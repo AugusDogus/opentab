@@ -9,21 +9,10 @@ import { protectedProcedure, router } from "./index";
 
 const deviceTypeSchema = z.enum(["mobile", "browser_extension"]);
 
-// Web Push subscription object (from PushSubscription.toJSON())
-const webPushSubscriptionSchema = z.object({
-  endpoint: z.string().url(),
-  keys: z.object({
-    p256dh: z.string(),
-    auth: z.string(),
-  }),
-});
-
 const registerDeviceInput = z.object({
   deviceType: deviceTypeSchema,
   deviceName: z.string().optional(),
   pushToken: z.string().optional(),
-  // For browser extensions: Web Push subscription
-  webPushSubscription: webPushSubscriptionSchema.optional(),
   deviceIdentifier: z.string(),
 });
 
@@ -35,24 +24,16 @@ export const deviceRouter = router({
   register: protectedProcedure.input(registerDeviceInput).mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
-    // Check if device with this identifier already exists for this user
     const existingDevice = await db.query.device.findFirst({
       where: and(eq(device.userId, userId), eq(device.deviceIdentifier, input.deviceIdentifier)),
     });
 
-    // Serialize web push subscription if provided
-    const webPushSubscriptionJson = input.webPushSubscription
-      ? JSON.stringify(input.webPushSubscription)
-      : undefined;
-
     if (existingDevice) {
-      // Update existing device
       const [updatedDevice] = await db
         .update(device)
         .set({
           deviceName: input.deviceName ?? existingDevice.deviceName,
           pushToken: input.pushToken ?? existingDevice.pushToken,
-          webPushSubscription: webPushSubscriptionJson ?? existingDevice.webPushSubscription,
           deviceType: input.deviceType,
         })
         .where(eq(device.id, existingDevice.id))
@@ -61,7 +42,6 @@ export const deviceRouter = router({
       return updatedDevice;
     }
 
-    // Create new device
     const deviceId = crypto.randomUUID();
     const [newDevice] = await db
       .insert(device)
@@ -71,7 +51,6 @@ export const deviceRouter = router({
         deviceType: input.deviceType,
         deviceName: input.deviceName,
         pushToken: input.pushToken,
-        webPushSubscription: webPushSubscriptionJson,
         deviceIdentifier: input.deviceIdentifier,
       })
       .returning();
@@ -93,7 +72,6 @@ export const deviceRouter = router({
   remove: protectedProcedure.input(removeDeviceInput).mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
-    // Verify the device belongs to the user
     const existingDevice = await db.query.device.findFirst({
       where: and(eq(device.id, input.deviceId), eq(device.userId, userId)),
     });
