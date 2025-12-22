@@ -37,3 +37,7 @@ keys.json
 
 # typescript
 .tsbuildinfo
+
+# release artifacts
+*.crx
+*.zip

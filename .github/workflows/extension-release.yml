@@ -1,0 +1,64 @@
+name: Build and Release Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0)"
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build extension
+        working-directory: apps/extension
+        run: bun run build
+        env:
+          PLASMO_PUBLIC_SERVER_URL: https://opentab-mocha.vercel.app
+
+      - name: Create ZIP
+        working-directory: apps/extension
+        run: |
+          cd build/chrome-mv2-prod
+          zip -r ../../opentab-extension.zip .
+
+      - name: Create CRX
+        working-directory: apps/extension
+        run: |
+          npm install -g crx3
+          crx3 pack build/chrome-mv2-prod -o opentab-extension.crx
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          files: |
+            apps/extension/opentab-extension.zip
+            apps/extension/opentab-extension.crx
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
