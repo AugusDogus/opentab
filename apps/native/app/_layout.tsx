@@ -1,3 +1,10 @@
+// Polyfill crypto.getRandomValues for React Native
+// This must be imported before any code that uses crypto
+import * as ExpoCrypto from "expo-crypto";
+if (!globalThis.crypto?.getRandomValues) {
+  globalThis.crypto = { getRandomValues: ExpoCrypto.getRandomValues } as Crypto;
+}
+
 import "@/global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -38,17 +45,17 @@ function StackLayout() {
 export default function Layout() {
   return (
     <ShareIntentProvider>
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <KeyboardProvider>
-          <AppThemeProvider>
-            <HeroUINativeProvider>
-              <StackLayout />
-            </HeroUINativeProvider>
-          </AppThemeProvider>
-        </KeyboardProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <AppThemeProvider>
+              <HeroUINativeProvider>
+                <StackLayout />
+              </HeroUINativeProvider>
+            </AppThemeProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
     </ShareIntentProvider>
   );
 }

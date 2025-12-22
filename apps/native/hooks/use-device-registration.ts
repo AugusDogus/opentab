@@ -1,12 +1,14 @@
+import { decryptFromDevice, deserializeEncryptedPayload } from "@opentab/crypto";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { isDevice } from "expo-device";
 import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
+import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
-import { useEffect, useRef, useCallback } from "react";
 
 import { useDeviceIdentifier } from "@/hooks/use-device-identifier";
+import { useEncryptionKeys } from "@/hooks/use-encryption-keys";
 import { trpc } from "@/utils/trpc";
 
 const openUrl = (url: string) => {
@@ -68,11 +70,32 @@ const getPushToken = async (): Promise<string | null> => {
   return tokenData.data;
 };
 
+/**
+ * Decrypt notification data and extract URL
+ */
+const decryptNotificationUrl = (
+  data: Record<string, unknown>,
+  secretKey: string,
+): string | null => {
+  const encryptedDataStr = data?.encryptedData as string | undefined;
+  if (!encryptedDataStr) return null;
+
+  try {
+    const encryptedPayload = deserializeEncryptedPayload(encryptedDataStr);
+    const decryptedData = decryptFromDevice(encryptedPayload, secretKey);
+    return decryptedData.url;
+  } catch (error) {
+    console.error("Failed to decrypt notification data:", error);
+    return null;
+  }
+};
+
 export const useDeviceRegistration = () => {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const hasHandledInitialNotification = useRef(false);
   const { deviceIdentifier, isLoading: isDeviceIdLoading } = useDeviceIdentifier();
+  const { publicKey, secretKey, isLoading: isKeysLoading } = useEncryptionKeys();
 
   // Query the devices list to check if this device is already registered
   const devices = useQuery(trpc.device.list.queryOptions());
@@ -92,6 +115,11 @@ export const useDeviceRegistration = () => {
   const registerDevice = useCallback(async () => {
     if (!deviceIdentifier) {
       console.log("Device identifier not yet loaded, skipping registration");
+      return;
+    }
+
+    if (!publicKey) {
+      console.log("Encryption keys not yet loaded, skipping registration");
       return;
     }
 
@@ -124,35 +152,45 @@ export const useDeviceRegistration = () => {
       deviceName,
       pushToken: pushToken ?? undefined,
       deviceIdentifier,
+      publicKey,
     });
-  }, [registerDeviceMutation, deviceIdentifier, devices.data]);
+  }, [registerDeviceMutation, deviceIdentifier, devices.data, publicKey]);
 
   useEffect(() => {
+    // Don't set up notification handlers until we have the secret key
+    if (!secretKey) return;
+
     // Handle cold start from notification
     if (!hasHandledInitialNotification.current) {
       hasHandledInitialNotification.current = true;
       Notifications.getLastNotificationResponseAsync().then((response) => {
-        const url = response?.notification.request.content.data?.url as string | undefined;
-        if (url) openUrl(url);
-    });
+        const data = response?.notification.request.content.data;
+        if (data) {
+          const url = decryptNotificationUrl(data, secretKey);
+          if (url) openUrl(url);
+        }
+      });
     }
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const url = response.notification.request.content.data?.url as string | undefined;
-      if (url) openUrl(url);
+      const data = response.notification.request.content.data;
+      if (data) {
+        const url = decryptNotificationUrl(data, secretKey);
+        if (url) openUrl(url);
+      }
     });
 
     return () => {
       notificationListener.current?.remove();
       responseListener.current?.remove();
     };
-  }, []);
+  }, [secretKey]);
 
   return {
     registerDevice,
-    isRegistering: registerDeviceMutation.isPending || isDeviceIdLoading,
+    isRegistering: registerDeviceMutation.isPending || isDeviceIdLoading || isKeysLoading,
     registrationError: registerDeviceMutation.error,
     deviceIdentifier,
   };
