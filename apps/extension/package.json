@@ -45,16 +45,14 @@
     "typescript": "catalog:"
   },
   "manifest": {
-    "host_permissions": [
-      "$PLASMO_PUBLIC_SERVER_URL/*"
-    ],
     "permissions": [
       "activeTab",
       "tabs",
       "contextMenus",
-      "storage"
+      "storage",
+      "$PLASMO_PUBLIC_SERVER_URL/*"
     ],
-    "action": {
+    "browser_action": {
       "default_title": "opentab",
       "default_popup": "popup.html"
     }

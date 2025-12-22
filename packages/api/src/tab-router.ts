@@ -8,6 +8,32 @@ import { pendingTab } from "@opentab/db/schema/pending-tab";
 
 import { protectedProcedure, router } from "./index";
 
+type TabEventListener = (tab: { id: string; url: string; title: string | null }) => void;
+const tabEventListeners = new Map<string, Set<TabEventListener>>();
+
+const emitNewTab = (
+  targetDeviceId: string,
+  tab: { id: string; url: string; title: string | null },
+): void => {
+  const listeners = tabEventListeners.get(targetDeviceId);
+  if (listeners) {
+    listeners.forEach((listener) => listener(tab));
+  }
+};
+
+const addTabListener = (deviceId: string, listener: TabEventListener): (() => void) => {
+  const listeners = tabEventListeners.get(deviceId) ?? new Set();
+  listeners.add(listener);
+  tabEventListeners.set(deviceId, listeners);
+
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      tabEventListeners.delete(deviceId);
+    }
+  };
+};
+
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 type ExpoPushMessage = {
@@ -123,6 +149,14 @@ export const tabRouter = router({
 
     if (pendingTabs.length > 0) {
       await db.insert(pendingTab).values(pendingTabs);
+
+      pendingTabs.forEach((tab) => {
+        emitNewTab(tab.targetDeviceId, {
+          id: tab.id,
+          url: tab.url,
+          title: tab.title,
+        });
+      });
     }
 
     return {
@@ -175,5 +209,61 @@ export const tabRouter = router({
         .where(eq(pendingTab.id, input.tabId));
 
       return { success: true };
+    }),
+
+  onNewTab: protectedProcedure
+    .input(z.object({ deviceIdentifier: z.string() }))
+    .subscription(async function* ({ ctx, input, signal }) {
+      const userId = ctx.session.user.id;
+
+      const targetDevice = await db.query.device.findFirst({
+        where: and(eq(device.userId, userId), eq(device.deviceIdentifier, input.deviceIdentifier)),
+      });
+
+      if (!targetDevice) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Device not found. Please register your device first.",
+        });
+      }
+
+      const existingTabs = await db.query.pendingTab.findMany({
+        where: and(eq(pendingTab.targetDeviceId, targetDevice.id), eq(pendingTab.delivered, false)),
+        orderBy: (tab, { asc }) => [asc(tab.createdAt)],
+      });
+
+      for (const tab of existingTabs) {
+        yield { id: tab.id, url: tab.url, title: tab.title };
+      }
+
+      const tabQueue: Array<{ id: string; url: string; title: string | null }> = [];
+      let resolveWait: (() => void) | null = null;
+
+      const cleanup = addTabListener(targetDevice.id, (tab) => {
+        tabQueue.push(tab);
+        if (resolveWait) {
+          resolveWait();
+          resolveWait = null;
+        }
+      });
+
+      try {
+        if (!signal) return;
+
+        while (!signal.aborted) {
+          if (tabQueue.length === 0) {
+            await new Promise<void>((resolve) => {
+              resolveWait = resolve;
+              signal.addEventListener("abort", () => resolve(), { once: true });
+            });
+          }
+
+          while (tabQueue.length > 0) {
+            yield tabQueue.shift()!;
+          }
+        }
+      } finally {
+        cleanup();
+      }
     }),
 });

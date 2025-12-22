@@ -1,39 +1,29 @@
 This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
 
-## Technical Limitations
+## Why Manifest V2?
 
-This extension is designed for Chromium-based browsers that don't have Google's FCM (Firebase Cloud Messaging) integration, such as Helium. Because of this, it uses **polling** (every 30 seconds) to check for new tabs rather than Web Push notifications.
+This extension uses **Manifest V2** with a persistent background page to enable real-time tab delivery via Server-Sent Events (SSE). This is necessary because:
 
-If you're using Chrome or another browser with FCM support, Chrome's built-in "Send to your devices" feature is a better option for instant tab sharing.
+1. **Helium browser** (the target browser) doesn't support Google's FCM/Web Push, so we can't use push notifications
+2. **Manifest V3** service workers have a 30-second idle timeout and 5-minute connection limit, making SSE unreliable
+3. **MV2's persistent background page** keeps the SSE connection alive indefinitely for instant tab delivery
+
+If you're using Chrome, the built-in "Send to your devices" feature is a better option.
 
 ## Getting Started
 
-First, run the development server:
+Run the development server with MV2 target:
 
 ```bash
-pnpm dev
-# or
-npm run dev
+bun dev --target=chrome-mv2
 ```
 
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
+Load the extension from `build/chrome-mv2-dev`.
 
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
+## Production Build
 
 ```bash
-pnpm build
-# or
-npm run build
+bun build --target=chrome-mv2
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
-
-## Submit to the webstores
-
-The easiest way to deploy your Plasmo extension is to use the built-in [bpp](https://bpp.browser.market) GitHub action. Prior to using this action however, make sure to build your extension and upload the first version to the store to establish the basic credentials. Then, simply follow [this setup instruction](https://docs.plasmo.com/framework/workflows/submit) and you should be on your way for automated submission!
+This creates a production bundle in `build/chrome-mv2-prod`.

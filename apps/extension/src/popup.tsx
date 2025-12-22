@@ -20,15 +20,25 @@ import "~style.css";
 
 const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
 
+// MV2 uses callback-based APIs
+const storageGet = (key: string): Promise<Record<string, unknown>> =>
+  new Promise((resolve) => chrome.storage.local.get(key, resolve));
+
+const storageSet = (items: Record<string, unknown>): Promise<void> =>
+  new Promise((resolve) => chrome.storage.local.set(items, resolve));
+
+const tabsQuery = (query: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> =>
+  new Promise((resolve) => chrome.tabs.query(query, resolve));
+
 const getDeviceIdentifier = async (): Promise<string> => {
-  const stored = await chrome.storage.local.get(DEVICE_IDENTIFIER_KEY);
+  const stored = await storageGet(DEVICE_IDENTIFIER_KEY);
 
   if (stored[DEVICE_IDENTIFIER_KEY]) {
     return stored[DEVICE_IDENTIFIER_KEY] as string;
   }
 
   const newId = `extension-${crypto.randomUUID()}`;
-  await chrome.storage.local.set({ [DEVICE_IDENTIFIER_KEY]: newId });
+  await storageSet({ [DEVICE_IDENTIFIER_KEY]: newId });
   return newId;
 };
 
@@ -81,7 +91,7 @@ function AuthenticatedView({
   }, [deviceToRemove, removeDeviceMutation]);
 
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+    tabsQuery({ active: true, currentWindow: true }).then((tabs) => {
       if (tabs[0]) {
         setCurrentTab(tabs[0]);
       }
@@ -265,7 +275,7 @@ function IndexPopup() {
     });
 
     if (result.data?.url) {
-      chrome.tabs.create({ url: result.data.url });
+      chrome.tabs.create({ url: result.data.url }, () => {});
 
       const pollInterval = setInterval(async () => {
         const session = await authClient.getSession();
