@@ -19,7 +19,7 @@ export default {
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
       package: "com.augusdogus.opentab",
-      googleServicesFile: process.env.GOOGLE_SERVICES_FILE,
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       intentFilters: [
         {
           action: "android.intent.action.SEND",
