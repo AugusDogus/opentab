@@ -1,3 +1,9 @@
+import {
+  encryptForDevices,
+  generateKeyPair,
+  serializeEncryptedPayload,
+  type KeyPair,
+} from "@opentab/crypto";
 import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import { Monitor, Smartphone, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -19,16 +25,45 @@ import { queryClient, trpc } from "~lib/trpc";
 import "~style.css";
 
 const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
+const SECRET_KEY_STORAGE_KEY = "opentab_secret_key";
+const PUBLIC_KEY_STORAGE_KEY = "opentab_public_key";
 
 // MV2 uses callback-based APIs
-const storageGet = (key: string): Promise<Record<string, unknown>> =>
-  new Promise((resolve) => chrome.storage.local.get(key, resolve));
+const storageGet = (keys: string | string[]): Promise<Record<string, unknown>> =>
+  new Promise((resolve) => chrome.storage.local.get(keys, resolve));
 
 const storageSet = (items: Record<string, unknown>): Promise<void> =>
   new Promise((resolve) => chrome.storage.local.set(items, resolve));
 
 const tabsQuery = (query: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> =>
   new Promise((resolve) => chrome.tabs.query(query, resolve));
+
+/**
+ * Get or generate encryption key pair
+ */
+const getOrCreateKeyPair = async (): Promise<KeyPair> => {
+  const stored = await storageGet([SECRET_KEY_STORAGE_KEY, PUBLIC_KEY_STORAGE_KEY]);
+
+  const existingSecretKey = stored[SECRET_KEY_STORAGE_KEY] as string | undefined;
+  const existingPublicKey = stored[PUBLIC_KEY_STORAGE_KEY] as string | undefined;
+
+  if (existingSecretKey && existingPublicKey) {
+    return {
+      secretKey: existingSecretKey,
+      publicKey: existingPublicKey,
+    };
+  }
+
+  // Generate new key pair
+  const keyPair = generateKeyPair();
+
+  await storageSet({
+    [SECRET_KEY_STORAGE_KEY]: keyPair.secretKey,
+    [PUBLIC_KEY_STORAGE_KEY]: keyPair.publicKey,
+  });
+
+  return keyPair;
+};
 
 const getDeviceIdentifier = async (): Promise<string> => {
   const stored = await storageGet(DEVICE_IDENTIFIER_KEY);
@@ -52,6 +87,7 @@ function AuthenticatedView({
   const devices = useQuery(trpc.device.list.queryOptions());
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null);
   const [deviceIdentifier, setDeviceIdentifier] = useState<string>("");
+  const [keyPair, setKeyPair] = useState<KeyPair | null>(null);
   const [deviceToRemove, setDeviceToRemove] = useState<{
     id: string;
     name: string;
@@ -65,7 +101,15 @@ function AuthenticatedView({
     .toUpperCase()
     .slice(0, 2);
 
-  const sendTabMutation = useMutation(trpc.tab.send.mutationOptions());
+  // Query to get target devices for encryption
+  const targetDevicesQuery = useQuery(
+    trpc.device.getTargetDevices.queryOptions(
+      { sourceDeviceIdentifier: deviceIdentifier },
+      { enabled: !!deviceIdentifier },
+    ),
+  );
+
+  const sendTabMutation = useMutation(trpc.tab.sendEncrypted.mutationOptions());
   const registerDeviceMutation = useMutation(
     trpc.device.register.mutationOptions({
       onSuccess: () => {
@@ -98,11 +142,12 @@ function AuthenticatedView({
     });
 
     getDeviceIdentifier().then(setDeviceIdentifier);
+    getOrCreateKeyPair().then(setKeyPair);
   }, []);
 
   // Register device when authenticated if not already in the devices list
   useEffect(() => {
-    if (!deviceIdentifier || !devices.data || registerDeviceMutation.isPending) return;
+    if (!deviceIdentifier || !keyPair || !devices.data || registerDeviceMutation.isPending) return;
 
     // Check if this device is already registered
     const isAlreadyRegistered = devices.data.some(
@@ -114,19 +159,35 @@ function AuthenticatedView({
         deviceType: "browser_extension",
         deviceName: "Chrome Extension",
         deviceIdentifier,
+        publicKey: keyPair.publicKey,
       });
     }
-  }, [deviceIdentifier, devices.data, registerDeviceMutation]);
+  }, [deviceIdentifier, keyPair, devices.data, registerDeviceMutation]);
 
   const handleSendTab = useCallback(() => {
-    if (!currentTab?.url || !deviceIdentifier) return;
+    if (!currentTab?.url || !deviceIdentifier || !keyPair) return;
+    if (!targetDevicesQuery.data || targetDevicesQuery.data.length === 0) {
+      console.log("No target devices available");
+      return;
+    }
+
+    // Encrypt for each target device
+    const encryptedPayloads = encryptForDevices(
+      { url: currentTab.url, title: currentTab.title },
+      targetDevicesQuery.data,
+      keyPair.secretKey,
+      keyPair.publicKey,
+    ).map((payload) => ({
+      targetDeviceId: payload.deviceId,
+      encryptedData: serializeEncryptedPayload(payload.encrypted),
+    }));
 
     sendTabMutation.mutate({
-      url: currentTab.url,
-      title: currentTab.title,
       sourceDeviceIdentifier: deviceIdentifier,
+      senderPublicKey: keyPair.publicKey,
+      encryptedPayloads,
     });
-  }, [currentTab, deviceIdentifier, sendTabMutation]);
+  }, [currentTab, deviceIdentifier, keyPair, targetDevicesQuery.data, sendTabMutation]);
 
   return (
     <div className="p-6 w-80 bg-neutral-950 text-neutral-100">
@@ -158,7 +219,12 @@ function AuthenticatedView({
 
         <button
           onClick={handleSendTab}
-          disabled={!currentTab?.url || sendTabMutation.isPending}
+          disabled={
+            !currentTab?.url ||
+            sendTabMutation.isPending ||
+            !targetDevicesQuery.data ||
+            targetDevicesQuery.data.length === 0
+          }
           className="w-full py-3 bg-emerald-600 text-white text-sm rounded hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {sendTabMutation.isPending ? "Sending..." : "Send to Devices"}
