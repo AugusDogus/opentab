@@ -10,10 +10,7 @@ export const DialogBlurBackdrop = () => {
   const blurIntensity = useDerivedValue(() => {
     const maxIntensity = 50; // Dark mode intensity
 
-    if (
-      (isDragging.get() || isGestureReleaseAnimationRunning.get()) &&
-      progress.get() <= 1
-    ) {
+    if ((isDragging.get() || isGestureReleaseAnimationRunning.get()) && progress.get() <= 1) {
       return maxIntensity;
     }
 
@@ -22,12 +19,7 @@ export const DialogBlurBackdrop = () => {
 
   return (
     <Dialog.Close style={StyleSheet.absoluteFill}>
-      <AnimatedBlurView
-        blurIntensity={blurIntensity}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
+      <AnimatedBlurView blurIntensity={blurIntensity} tint="dark" style={StyleSheet.absoluteFill} />
     </Dialog.Close>
   );
 };
-

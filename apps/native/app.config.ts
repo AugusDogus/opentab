@@ -20,13 +20,6 @@ export default {
       },
       package: "com.augusdogus.opentab",
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
-      intentFilters: [
-        {
-          action: "android.intent.action.SEND",
-          category: ["android.intent.category.DEFAULT"],
-          data: [{ mimeType: "text/plain" }],
-        },
-      ],
     },
     name: "opentab",
     slug: "opentab",
@@ -35,6 +28,19 @@ export default {
       "expo-system-ui",
       "expo-web-browser",
       "@rnrepo/expo-config-plugin",
+      [
+        "expo-share-intent",
+        {
+          // iOS: Enable URL and webpage sharing
+          iosActivationRules: {
+            NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+            NSExtensionActivationSupportsWebPageWithMaxCount: 1,
+            NSExtensionActivationSupportsText: true,
+          },
+          // Android: Enable text/URL sharing
+          androidIntentFilters: ["text/*"],
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
