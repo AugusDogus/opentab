@@ -6,4 +6,3 @@ export default defineConfig({
   tag: "v%s",
   push: true,
 });
-
