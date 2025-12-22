@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "cd ../.. && bun install",
-  "buildCommand": "cd ../.. && turbo build --filter=server"
+  "buildCommand": "cd ../.. && turbo build --filter=@opentab/server",
+  "ignoreCommand": "bunx turbo-ignore @opentab/server"
 }

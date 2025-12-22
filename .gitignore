@@ -15,6 +15,9 @@ build
 .env
 .env*.local
 
+# Credentials
+credentials.json
+
 # Refrences
 references
 

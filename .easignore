@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Other apps (not needed for native build)
+apps/extension
+apps/server
+
+# Reference projects (huge!)
+references
+
+# Build outputs & caches
+dist
+build
+*.tsbuildinfo
+.turbo
+.cache
+
+# Environment
+.env
+.env*.local
+
+# IDE/OS
+.vscode
+.idea
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Misc
+coverage
+*.tgz
+tmp
+temp

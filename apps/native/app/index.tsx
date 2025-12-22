@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
-import { Avatar, Button, Dialog, Spinner, Surface } from "heroui-native";
+import { Avatar, Button, cn, Dialog, Skeleton, Spinner, Surface, useThemeColor } from "heroui-native";
 import { useCallback, useEffect, useState } from "react";
 import { Modal, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 
+import { DialogBlurBackdrop } from "@/components/dialog-blur-backdrop";
 import { useDeviceRegistration } from "@/hooks/use-device-registration";
 import { useShareIntent } from "@/hooks/use-share-intent";
 import { authClient } from "@/lib/auth-client";
@@ -137,16 +138,30 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
       {/* Registered Devices */}
       <Surface variant="secondary" className="gap-3">
         <Text className="text-xs tracking-wider uppercase text-muted">devices</Text>
-        {devices.isPending ? (
-          <Spinner size="sm" color="default" />
-        ) : devices.error ? (
+        {devices.error ? (
           <Text className="text-sm text-danger">{devices.error.message}</Text>
+        ) : devices.isPending ? (
+          <View className="gap-1">
+            {[1, 2].map((i) => (
+              <View key={i} className="flex-row items-center gap-3 py-1.5 h-12">
+                <Skeleton className="size-[18px] rounded" />
+                <View className="flex-1">
+                  <Skeleton className={cn("h-5 rounded", i === 1 ? "w-32" : "w-24")} />
+                </View>
+                <View className="size-9 rounded-lg items-center justify-center">
+                  <Skeleton className="size-[18px] rounded-lg" />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : devices.data?.length === 0 ? (
+          <Text className="text-sm text-muted">No devices registered</Text>
         ) : (
           <View className="gap-1">
             {devices.data?.map((device) => {
               const isCurrentDevice = device.deviceIdentifier === deviceIdentifier;
               return (
-                <View key={device.id} className="flex-row items-center gap-3 py-1.5">
+                <View key={device.id} className="flex-row items-center gap-3 py-1.5 h-12">
                   <StyledIonicons
                     name={device.deviceType === "mobile" ? "phone-portrait-outline" : "desktop-outline"}
                     size={18}
@@ -173,9 +188,6 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
                 </View>
               );
             })}
-            {devices.data?.length === 0 && (
-              <Text className="text-sm text-muted">No devices registered</Text>
-            )}
           </View>
         )}
       </Surface>
@@ -193,7 +205,7 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
         }}
       >
         <Dialog.Portal>
-          <Dialog.Overlay />
+          <DialogBlurBackdrop />
           <Dialog.Content>
             <Dialog.Close className="self-end -mb-2 z-50" />
             <View className="mb-5 gap-1.5">
@@ -228,6 +240,7 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
 export default function Home() {
   const { data, isPending, error } = authClient.useSession();
   const [isLoading, setIsLoading] = useState(false);
+  const backgroundColor = useThemeColor("background");
 
   const handleUrlReceived = useCallback((url: string) => {
     // Open the URL in the default browser
@@ -259,12 +272,9 @@ export default function Home() {
     setIsLoading(false);
   }, []);
 
+  // Splash screen handles the loading state, return null while pending
   if (isPending) {
-    return (
-      <StyledSafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Spinner size="lg" color="default" />
-      </StyledSafeAreaView>
-    );
+    return null;
   }
 
   if (error) {
@@ -315,14 +325,14 @@ export default function Home() {
         variant="secondary"
         onPress={handleGitHubSignIn}
         isDisabled={isLoading}
-        className="w-full rounded-lg"
+        className="rounded-lg bg-foreground min-w-52"
       >
         {isLoading ? (
-          <Spinner size="sm" color="default" />
+          <Spinner size="sm" color={backgroundColor} />
         ) : (
           <>
-            <StyledIonicons name="logo-github" size={20} className="text-foreground" />
-            <Button.Label>Continue with GitHub</Button.Label>
+            <StyledIonicons name="logo-github" size={20} className="text-background" />
+            <Button.Label className="text-background">Continue with GitHub</Button.Label>
           </>
         )}
       </Button>

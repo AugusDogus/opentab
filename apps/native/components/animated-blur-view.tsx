@@ -15,6 +15,6 @@ export const AnimatedBlurView: FC<Props> = ({ blurIntensity, ...props }) => {
     };
   });
 
-  return <RBlurView animatedProps={animatedProps} {...props} />;
+  return <RBlurView experimentalBlurMethod="dimezisBlurView" animatedProps={animatedProps} {...props} />;
 };
 
