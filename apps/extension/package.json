@@ -5,9 +5,9 @@
   "description": "Send tabs to your devices.",
   "author": "AugusDogus",
   "scripts": {
-    "dev": "plasmo dev",
-    "build": "plasmo build",
-    "package": "plasmo package",
+    "dev": "plasmo dev --target=chrome-mv2",
+    "build": "plasmo build --target=chrome-mv2",
+    "package": "plasmo package --target=chrome-mv2",
     "typecheck": "tsc --noEmit",
     "postinstall": "bun scripts/patch-node-imports.ts"
   },
