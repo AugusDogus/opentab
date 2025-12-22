@@ -125,7 +125,6 @@ export const tabRouter = router({
     if (pendingTabs.length > 0) {
       await db.insert(pendingTab).values(pendingTabs);
 
-      // Emit to Upstash Realtime for instant delivery
       await Promise.all(
         pendingTabs.map((tab) =>
           emitTabEvent(tab.targetDeviceId, {
@@ -189,8 +188,6 @@ export const tabRouter = router({
       return { success: true };
     }),
 
-  // Get the device ID for realtime subscription
-  // The extension will use this to connect to /api/realtime?channel=device-{deviceId}
   getDeviceId: protectedProcedure
     .input(z.object({ deviceIdentifier: z.string() }))
     .query(async ({ ctx, input }) => {
