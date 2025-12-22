@@ -1,5 +1,8 @@
+import packageJson from "./package.json";
+
 export default {
   expo: {
+    version: packageJson.version,
     scheme: "opentab",
     userInterfaceStyle: "automatic",
     orientation: "default",
