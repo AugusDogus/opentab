@@ -66,18 +66,8 @@ jobs:
               run: bun install --frozen-lockfile
 
             - name: Build app
-              id: build
               working-directory: apps/native
-              run: |
-                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                    PLATFORM="android"
-                    PROFILE="preview"
-                  else
-                    PLATFORM="android"
-                    PROFILE="production"
-                  fi
-
-                  eas build --platform $PLATFORM --profile $PROFILE --non-interactive --wait --json > build_result.json
+              run: eas build --platform android --profile production --non-interactive --wait --json > build_result.json
 
             - name: Download build artifact
               working-directory: apps/native
@@ -110,16 +100,14 @@ jobs:
               with:
                   path: artifacts
 
-            - name: Generate Changelog
-              id: changelog
-              run: |
-                  bunx changelogithub --dry > changelog.md 2>&1 || true
-                  cat changelog.md
+            - name: Create Release with Changelog
+              run: bunx changelogithub
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Create Release
-              uses: softprops/action-gh-release@v2.2.1
+            - name: Upload Release Assets
+              uses: softprops/action-gh-release@v2
               with:
-                  body_path: changelog.md
                   files: |
                       artifacts/extension/*
                       artifacts/native/*

@@ -21,7 +21,6 @@
     "@react-navigation/drawer": "^7.3.9",
     "@react-navigation/elements": "^2.8.1",
     "@rnrepo/expo-config-plugin": "^0.2.0-beta.0",
-    "@t3-oss/env-core": "catalog:",
     "@tanstack/react-query": "^5.90.12",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
