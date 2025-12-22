@@ -1,6 +1,15 @@
-# opentab
-
-Send tabs to your devices.
+<div align="center">
+    <br/>
+    <p>
+        <img src="apps/extension/assets/icon.png"
+            title="Helium" alt="opentab logo" width="120" />
+        <h1>opentab</h1>
+    </p>
+    <p width="120">
+        Send tabs to your devices.
+    </p>
+    <video width="1460" height="1016" title="opentab" src="https://github.com/user-attachments/assets/60071e12-d41b-4a6e-8a07-7e61c8cceec4"></video>
+</div>
 
 ## Tech Stack
 
