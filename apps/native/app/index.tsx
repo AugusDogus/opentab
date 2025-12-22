@@ -1,7 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
-import { Avatar, Button, cn, Dialog, Skeleton, Spinner, Surface, useThemeColor } from "heroui-native";
+import {
+  Avatar,
+  Button,
+  cn,
+  Dialog,
+  Skeleton,
+  Spinner,
+  Surface,
+  useThemeColor,
+} from "heroui-native";
 import { useCallback, useEffect, useState } from "react";
 import { Modal, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -163,7 +172,9 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
               return (
                 <View key={device.id} className="flex-row items-center gap-3 py-1.5 h-12">
                   <StyledIonicons
-                    name={device.deviceType === "mobile" ? "phone-portrait-outline" : "desktop-outline"}
+                    name={
+                      device.deviceType === "mobile" ? "phone-portrait-outline" : "desktop-outline"
+                    }
                     size={18}
                     className={isCurrentDevice ? "text-success" : "text-foreground"}
                   />
@@ -283,7 +294,11 @@ export default function Home() {
         <Surface className="w-full gap-4 items-center">
           <StyledIonicons name="alert-circle-outline" size={32} className="text-danger" />
           <Text className="text-sm text-danger text-center">{error.message}</Text>
-          <Button variant="secondary" className="rounded-lg" onPress={() => window.location.reload()}>
+          <Button
+            variant="secondary"
+            className="rounded-lg"
+            onPress={() => window.location.reload()}
+          >
             Try Again
           </Button>
         </Surface>

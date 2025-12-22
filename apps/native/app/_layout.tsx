@@ -1,6 +1,7 @@
 import "@/global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import { ShareIntentProvider } from "expo-share-intent";
 import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
 import { HeroUINativeProvider } from "heroui-native";
@@ -36,16 +37,18 @@ function StackLayout() {
 
 export default function Layout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <KeyboardProvider>
-          <AppThemeProvider>
-            <HeroUINativeProvider>
-              <StackLayout />
-            </HeroUINativeProvider>
-          </AppThemeProvider>
-        </KeyboardProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ShareIntentProvider>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <AppThemeProvider>
+              <HeroUINativeProvider>
+                <StackLayout />
+              </HeroUINativeProvider>
+            </AppThemeProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ShareIntentProvider>
   );
 }
