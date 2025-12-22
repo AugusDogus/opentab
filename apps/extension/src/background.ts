@@ -1,17 +1,11 @@
-/// <reference lib="webworker" />
-
 import type { AppRouter } from "@opentab/api/routers"
 import { createTRPCClient, httpBatchLink } from "@trpc/client"
 
 import { env } from "~env"
 
-// Declare service worker global scope
-declare const self: ServiceWorkerGlobalScope
-
-// Storage keys
 const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier"
+const POLL_INTERVAL_MS = 5000 // 5 seconds
 
-// Create tRPC client for background script
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
@@ -26,7 +20,6 @@ const trpcClient = createTRPCClient<AppRouter>({
   ]
 })
 
-// Generate or retrieve device identifier
 const getDeviceIdentifier = async (): Promise<string> => {
   const stored = await chrome.storage.local.get(DEVICE_IDENTIFIER_KEY)
 
@@ -39,56 +32,13 @@ const getDeviceIdentifier = async (): Promise<string> => {
   return newId
 }
 
-const subscribeToWebPush = async (): Promise<PushSubscription | null> => {
-  try {
-    const registration = await self.registration
-    let subscription = await registration.pushManager.getSubscription()
-
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: false,
-        applicationServerKey: Uint8Array.fromBase64(
-          env.PLASMO_PUBLIC_VAPID_PUBLIC_KEY,
-          {
-            alphabet: "base64url"
-          }
-        )
-      })
-    }
-
-    return subscription
-  } catch (error) {
-    console.error("Failed to subscribe to Web Push:", error)
-    return null
-  }
-}
-
 const registerDevice = async (): Promise<void> => {
   try {
     const deviceIdentifier = await getDeviceIdentifier()
-    const pushSubscription = await subscribeToWebPush()
-
     await trpcClient.device.register.mutate({
       deviceType: "browser_extension",
       deviceName: "Chrome Extension",
-      deviceIdentifier,
-      webPushSubscription: pushSubscription
-        ? {
-            endpoint: pushSubscription.endpoint,
-            keys: {
-              p256dh: btoa(
-                String.fromCharCode(
-                  ...new Uint8Array(pushSubscription.getKey("p256dh")!)
-                )
-              ),
-              auth: btoa(
-                String.fromCharCode(
-                  ...new Uint8Array(pushSubscription.getKey("auth")!)
-                )
-              )
-            }
-          }
-        : undefined
+      deviceIdentifier
     })
   } catch {
     // Not authenticated
@@ -115,27 +65,31 @@ const openAndMarkTab = async (tabId: string, url: string): Promise<void> => {
   try {
     await trpcClient.tab.markDelivered.mutate({ tabId })
   } catch {
-    // If marking failed, close the tab to prevent duplicates on reconnect
     if (createdTab?.id) {
       await chrome.tabs.remove(createdTab.id)
     }
   }
 }
 
-self.addEventListener("push", (event: PushEvent) => {
-  if (!event.data) return
+const pollForTabs = async (): Promise<void> => {
+  try {
+    const deviceIdentifier = await getDeviceIdentifier()
+    const pendingTabs = await trpcClient.tab.getPending.query({
+      deviceIdentifier
+    })
 
-  const data = event.data.json() as {
-    type: string
-    tabId: string
-    url: string
-    title: string | null
+    for (const tab of pendingTabs) {
+      await openAndMarkTab(tab.id, tab.url)
+    }
+  } catch {
+    // Not authenticated or network error
   }
+}
 
-  if (data.type === "new_tab") {
-    event.waitUntil(openAndMarkTab(data.tabId, data.url))
-  }
-})
+const startPolling = () => {
+  pollForTabs()
+  setInterval(pollForTabs, POLL_INTERVAL_MS)
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -144,11 +98,11 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ["all", "action"]
   })
 
-  registerDevice().catch((err) => console.error("Registration failed:", err))
+  registerDevice().then(() => startPolling())
 })
 
 chrome.runtime.onStartup.addListener(() => {
-  registerDevice().catch((err) => console.error("Registration failed:", err))
+  registerDevice().then(() => startPolling())
 })
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {

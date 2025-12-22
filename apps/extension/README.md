@@ -1,5 +1,11 @@
 This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
 
+## Technical Limitations
+
+This extension is designed for Chromium-based browsers that don't have Google's FCM (Firebase Cloud Messaging) integration, such as Helium. Because of this, it uses **polling** (every 30 seconds) to check for new tabs rather than Web Push notifications.
+
+If you're using Chrome or another browser with FCM support, Chrome's built-in "Send to your devices" feature is a better option for instant tab sharing.
+
 ## Getting Started
 
 First, run the development server:
