@@ -1,27 +1,27 @@
 name: Build Native App
 
 on:
-  push:
-    tags:
-      - "v*"
-        workflow_dispatch:
-            inputs:
-                platform:
-                    description: "Platform to build"
-                    required: true
-                    default: "android"
-                    type: choice
-                    options:
-                        - android
-                        - ios
-                profile:
-                    description: "Build profile"
-                    required: true
-                    default: "production"
-                    type: choice
-                    options:
-                        - preview
-                        - production
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+        inputs:
+            platform:
+                description: "Platform to build"
+                required: true
+                default: "android"
+                type: choice
+                options:
+                    - android
+                    - ios
+            profile:
+                description: "Build profile"
+                required: true
+                default: "production"
+                type: choice
+                options:
+                    - preview
+                    - production
 
 jobs:
     build:
