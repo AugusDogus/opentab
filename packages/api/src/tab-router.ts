@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { eq, and, ne } from "drizzle-orm";
+import webpush from "web-push";
 import { z } from "zod";
 
 import { db } from "@opentab/db";
@@ -79,6 +80,41 @@ const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<vo
   }
 };
 
+type WebPushSubscription = {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+};
+
+const sendWebPushNotification = async (
+  subscriptions: Array<{ subscription: WebPushSubscription; tabId: string }>,
+  payload: { url: string; title: string | null },
+): Promise<void> => {
+  if (subscriptions.length === 0) return;
+
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!vapidPublicKey || !vapidPrivateKey) return;
+
+  webpush.setVapidDetails("mailto:opentab@example.com", vapidPublicKey, vapidPrivateKey);
+
+  await Promise.allSettled(
+    subscriptions.map(({ subscription, tabId }) =>
+      webpush.sendNotification(
+        subscription,
+        JSON.stringify({
+          type: "new_tab",
+          tabId,
+          url: payload.url,
+          title: payload.title,
+        }),
+      ),
+    ),
+  );
+};
+
 const sendTabInput = z.object({
   url: z.string().url(),
   title: z.string().optional(),
@@ -144,7 +180,7 @@ export const tabRouter = router({
 
     await sendExpoPushNotification(pushMessages);
 
-    // Create pending tabs for browser extensions and emit events
+    // Create pending tabs for browser extensions
     const pendingTabs = extensionDevices.map((d) => ({
       id: crypto.randomUUID(),
       userId,
@@ -157,7 +193,33 @@ export const tabRouter = router({
     if (pendingTabs.length > 0) {
       await db.insert(pendingTab).values(pendingTabs);
 
-      // Emit events to notify subscribers
+      const webPushSubscriptions: Array<{
+        subscription: WebPushSubscription;
+        tabId: string;
+      }> = [];
+
+      for (const tab of pendingTabs) {
+        const targetDevice = extensionDevices.find((d) => d.id === tab.targetDeviceId);
+        if (targetDevice?.webPushSubscription) {
+          try {
+            const subscription = JSON.parse(
+              targetDevice.webPushSubscription,
+            ) as WebPushSubscription;
+            webPushSubscriptions.push({ subscription, tabId: tab.id });
+          } catch {
+            // Invalid subscription JSON
+          }
+        }
+      }
+
+      if (webPushSubscriptions.length > 0) {
+        await sendWebPushNotification(webPushSubscriptions, {
+          url: input.url,
+          title: input.title ?? null,
+        });
+      }
+
+      // Emit events for SSE subscribers (fallback)
       pendingTabs.forEach((tab) => {
         emitNewTab(tab.targetDeviceId, {
           id: tab.id,
