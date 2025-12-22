@@ -83,7 +83,9 @@ bun dev:server     # API server
 
 ### 5. Load the Extension
 
-For the Chrome extension, load `apps/extension/build/chrome-mv3-dev` as an unpacked extension in Chrome.
+For the Chrome extension, load `apps/extension/build/chrome-mv2-dev` as an unpacked extension.
+
+> **Note:** This extension uses Manifest V2 with SSE for real-time tab delivery, targeting Helium browser. See [why MV2](#why-manifest-v2) below.
 
 ## Available Scripts
 
@@ -107,3 +109,13 @@ bun typecheck        # Run TypeScript checks
 # Building
 bun build            # Build all packages
 ```
+
+## Why Manifest V2?
+
+The browser extension uses **Manifest V2** with a persistent background page to enable real-time tab delivery via Server-Sent Events (SSE). This is necessary because:
+
+1. **Helium browser** (the target browser) doesn't support Google's FCM/Web Push
+2. **Manifest V3** service workers have a 30-second idle timeout and 5-minute connection limit, making SSE unreliable
+3. **MV2's persistent background page** keeps the SSE connection alive indefinitely
+
+If you're using Chrome, the built-in "Send to your devices" feature is a better option.
