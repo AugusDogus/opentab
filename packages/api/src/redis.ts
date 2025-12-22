@@ -6,13 +6,11 @@ const schema = {
   tab: {
     new: z.object({
       id: z.string(),
-      url: z.string(),
-      title: z.string().nullable(),
+      encryptedData: z.string(), // Serialized encrypted payload
+      senderPublicKey: z.string(),
     }),
   },
 };
-
-type RealtimeInstance = ReturnType<typeof createRealtime>;
 
 const createRealtime = () => {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -26,6 +24,8 @@ const createRealtime = () => {
   return new Realtime({ schema, redis });
 };
 
+type RealtimeInstance = ReturnType<typeof createRealtime>;
+
 let realtimeInstance: RealtimeInstance = null;
 
 export const getRealtime = (): RealtimeInstance => {
@@ -37,7 +37,7 @@ export const getRealtime = (): RealtimeInstance => {
 
 export const emitTabEvent = async (
   deviceId: string,
-  tab: { id: string; url: string; title: string | null },
+  tab: { readonly id: string; readonly encryptedData: string; readonly senderPublicKey: string },
 ): Promise<boolean> => {
   const realtime = getRealtime();
   if (!realtime) return false;
@@ -46,8 +46,7 @@ export const emitTabEvent = async (
   return true;
 };
 
-export const isRedisConfigured = (): boolean => {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
-};
+export const isRedisConfigured = (): boolean =>
+  !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 export { schema };

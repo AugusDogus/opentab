@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@opentab/db";
@@ -14,6 +14,7 @@ const registerDeviceInput = z.object({
   deviceName: z.string().optional(),
   pushToken: z.string().optional(),
   deviceIdentifier: z.string(),
+  publicKey: z.string(), // Device's public key for E2E encryption
 });
 
 const removeDeviceInput = z.object({
@@ -35,6 +36,7 @@ export const deviceRouter = router({
           deviceName: input.deviceName ?? existingDevice.deviceName,
           pushToken: input.pushToken ?? existingDevice.pushToken,
           deviceType: input.deviceType,
+          publicKey: input.publicKey,
         })
         .where(eq(device.id, existingDevice.id))
         .returning();
@@ -52,11 +54,45 @@ export const deviceRouter = router({
         deviceName: input.deviceName,
         pushToken: input.pushToken,
         deviceIdentifier: input.deviceIdentifier,
+        publicKey: input.publicKey,
       })
       .returning();
 
     return newDevice;
   }),
+
+  getTargetDevices: protectedProcedure
+    .input(z.object({ sourceDeviceIdentifier: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const sourceDevice = await db.query.device.findFirst({
+        where: and(
+          eq(device.userId, userId),
+          eq(device.deviceIdentifier, input.sourceDeviceIdentifier),
+        ),
+      });
+
+      if (!sourceDevice) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Source device not found",
+        });
+      }
+
+      const targetDevices = await db.query.device.findMany({
+        where: and(eq(device.userId, userId), ne(device.id, sourceDevice.id)),
+      });
+
+      return targetDevices
+        .filter((d) => d.publicKey !== null)
+        .map((d) => ({
+          id: d.id,
+          publicKey: d.publicKey!,
+          deviceType: d.deviceType,
+          deviceName: d.deviceName,
+        }));
+    }),
 
   list: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;

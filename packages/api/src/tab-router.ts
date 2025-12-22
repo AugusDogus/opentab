@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@opentab/db";
@@ -12,15 +12,15 @@ import { emitTabEvent } from "./redis";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 type ExpoPushMessage = {
-  to: string;
-  title: string;
-  body: string;
-  data: Record<string, unknown>;
-  sound?: "default";
-  priority?: "high" | "normal" | "default";
+  readonly to: string;
+  readonly title: string;
+  readonly body: string;
+  readonly data: Record<string, unknown>;
+  readonly sound?: "default";
+  readonly priority?: "high" | "normal" | "default";
 };
 
-const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<void> => {
+const sendExpoPushNotification = async (messages: readonly ExpoPushMessage[]): Promise<void> => {
   if (messages.length === 0) return;
 
   const response = await fetch(EXPO_PUSH_URL, {
@@ -52,10 +52,15 @@ const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<vo
   }
 };
 
-const sendTabInput = z.object({
-  url: z.string().url(),
-  title: z.string().optional(),
+const sendEncryptedInput = z.object({
   sourceDeviceIdentifier: z.string(),
+  senderPublicKey: z.string(),
+  encryptedPayloads: z.array(
+    z.object({
+      targetDeviceId: z.string(),
+      encryptedData: z.string(), // Serialized EncryptedPayload
+    }),
+  ),
 });
 
 const getPendingTabsInput = z.object({
@@ -67,7 +72,7 @@ const markTabDeliveredInput = z.object({
 });
 
 export const tabRouter = router({
-  send: protectedProcedure.input(sendTabInput).mutation(async ({ ctx, input }) => {
+  sendEncrypted: protectedProcedure.input(sendEncryptedInput).mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
     const sourceDevice = await db.query.device.findFirst({
@@ -84,42 +89,57 @@ export const tabRouter = router({
       });
     }
 
+    // Validate all target devices belong to the user
+    const targetDeviceIds = input.encryptedPayloads.map((p) => p.targetDeviceId);
     const targetDevices = await db.query.device.findMany({
-      where: and(eq(device.userId, userId), ne(device.id, sourceDevice.id)),
+      where: and(eq(device.userId, userId)),
     });
 
-    if (targetDevices.length === 0) {
+    const userDeviceIds = new Set(targetDevices.map((d) => d.id));
+    const invalidDeviceIds = targetDeviceIds.filter((id) => !userDeviceIds.has(id));
+    if (invalidDeviceIds.length > 0) {
       throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "No other devices found. Please register at least one other device.",
+        code: "BAD_REQUEST",
+        message: "Some target devices do not belong to this user",
       });
     }
 
-    const mobileDevices = targetDevices.filter((d) => d.deviceType === "mobile" && d.pushToken);
-    const extensionDevices = targetDevices.filter((d) => d.deviceType === "browser_extension");
+    const mobilePayloads = input.encryptedPayloads.filter((p) => {
+      const targetDevice = targetDevices.find((d) => d.id === p.targetDeviceId);
+      return targetDevice?.deviceType === "mobile" && targetDevice?.pushToken;
+    });
 
-    const pushMessages: ExpoPushMessage[] = mobileDevices.map((d) => ({
-      to: d.pushToken!,
-      title: "Open Tab",
-      body: input.title ?? input.url,
-      data: {
-        url: input.url,
-        title: input.title,
-        sourceDeviceId: sourceDevice.id,
-      },
-      sound: "default" as const,
-      priority: "high" as const,
-    }));
+    const extensionPayloads = input.encryptedPayloads.filter((p) => {
+      const targetDevice = targetDevices.find((d) => d.id === p.targetDeviceId);
+      return targetDevice?.deviceType === "browser_extension";
+    });
+
+    // Send push notifications to mobile devices with encrypted data
+    const pushMessages: ExpoPushMessage[] = mobilePayloads.map((p) => {
+      const targetDevice = targetDevices.find((d) => d.id === p.targetDeviceId)!;
+      return {
+        to: targetDevice.pushToken!,
+        title: "opentab",
+        body: "New tab shared",
+        data: {
+          encryptedData: p.encryptedData,
+          senderPublicKey: input.senderPublicKey,
+        },
+        sound: "default" as const,
+        priority: "high" as const,
+      };
+    });
 
     await sendExpoPushNotification(pushMessages);
 
-    const pendingTabs = extensionDevices.map((d) => ({
+    // Store encrypted tabs for browser extensions
+    const pendingTabs = extensionPayloads.map((p) => ({
       id: crypto.randomUUID(),
       userId,
-      targetDeviceId: d.id,
+      targetDeviceId: p.targetDeviceId,
       sourceDeviceId: sourceDevice.id,
-      url: input.url,
-      title: input.title ?? null,
+      encryptedData: p.encryptedData,
+      senderPublicKey: input.senderPublicKey,
     }));
 
     if (pendingTabs.length > 0) {
@@ -129,16 +149,16 @@ export const tabRouter = router({
         pendingTabs.map((tab) =>
           emitTabEvent(tab.targetDeviceId, {
             id: tab.id,
-            url: tab.url,
-            title: tab.title,
+            encryptedData: tab.encryptedData,
+            senderPublicKey: tab.senderPublicKey,
           }),
         ),
       );
     }
 
     return {
-      sentToMobile: mobileDevices.length,
-      sentToExtensions: extensionDevices.length,
+      sentToMobile: mobilePayloads.length,
+      sentToExtensions: extensionPayloads.length,
     };
   }),
 
@@ -158,7 +178,11 @@ export const tabRouter = router({
       orderBy: (tab, { asc }) => [asc(tab.createdAt)],
     });
 
-    return tabs;
+    return tabs.map((tab) => ({
+      id: tab.id,
+      encryptedData: tab.encryptedData,
+      senderPublicKey: tab.senderPublicKey,
+    }));
   }),
 
   markDelivered: protectedProcedure
