@@ -25,6 +25,11 @@ import { queryClient, trpc } from "~lib/trpc";
 import "~style.css";
 
 const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
+
+// Security note: Keys are stored in chrome.storage.local (not session) because:
+// 1. Keys must persist across browser sessions for E2E encryption to function
+// 2. chrome.storage.local is isolated per-extension and inaccessible to other extensions/websites
+// 3. An attacker with filesystem access could already steal cookies/session tokens
 const SECRET_KEY_STORAGE_KEY = "opentab_secret_key";
 const PUBLIC_KEY_STORAGE_KEY = "opentab_public_key";
 
