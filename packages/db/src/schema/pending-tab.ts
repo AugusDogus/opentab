@@ -19,8 +19,8 @@ export const pendingTab = sqliteTable(
     sourceDeviceId: text("source_device_id")
       .notNull()
       .references(() => device.id, { onDelete: "cascade" }),
-    url: text("url").notNull(),
-    title: text("title"),
+    encryptedData: text("encrypted_data").notNull(), // Encrypted {url, title} blob
+    senderPublicKey: text("sender_public_key").notNull(), // For decryption
     // Whether this tab has been delivered/opened
     delivered: integer("delivered", { mode: "boolean" }).default(false).notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })

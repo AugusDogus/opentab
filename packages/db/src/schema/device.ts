@@ -13,6 +13,7 @@ export const device = sqliteTable(
     deviceType: text("device_type", { enum: ["mobile", "browser_extension"] }).notNull(),
     deviceName: text("device_name"),
     pushToken: text("push_token"),
+    publicKey: text("public_key"), // Device's public key for E2E encryption
     deviceIdentifier: text("device_identifier").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
