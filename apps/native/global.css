@@ -19,6 +19,8 @@
       --default: oklch(0.92 0.005 286.033);
       --overlay: oklch(0.96 0.005 271.19);
       --divider: oklch(0.90 0.005 286.033);
+      --accent: oklch(0.45 0.005 285.89);
+      --accent-foreground: oklch(0.98 0 0);
     }
 
     @variant dark {
@@ -28,6 +30,8 @@
       --default: oklch(0.18 0.005 286.033);
       --overlay: oklch(0.18 0.005 271.19);
       --divider: oklch(0.25 0.005 286.033);
+      --accent: oklch(0.75 0.005 285.89);
+      --accent-foreground: oklch(0.15 0 0);
     }
   }
 }

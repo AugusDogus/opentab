@@ -8,7 +8,7 @@ export const DialogBlurBackdrop = () => {
   const { progress, isDragging, isGestureReleaseAnimationRunning } = useDialogAnimation();
 
   const blurIntensity = useDerivedValue(() => {
-    const maxIntensity = 75; // Dark mode intensity
+    const maxIntensity = 50; // Dark mode intensity
 
     if (
       (isDragging.get() || isGestureReleaseAnimationRunning.get()) &&

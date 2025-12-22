@@ -4,6 +4,11 @@ export default {
     userInterfaceStyle: "automatic",
     orientation: "default",
     icon: "./assets/images/icon.png",
+    splash: {
+      image: "./assets/images/android-icon-monochrome.png",
+      resizeMode: "contain",
+      backgroundColor: "#000000",
+    },
     ios: {
       icon: "./assets/images/icon.png",
     },
