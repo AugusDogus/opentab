@@ -2,7 +2,6 @@ import { Realtime } from "@upstash/realtime";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
 
-// Schema for realtime events
 const schema = {
   tab: {
     new: z.object({
@@ -43,14 +42,8 @@ export const emitTabEvent = async (
   const realtime = getRealtime();
   if (!realtime) return false;
 
-  try {
-    // Emit to device-specific channel
-    await realtime.channel(`device-${deviceId}`).emit("tab.new", tab);
-    return true;
-  } catch (error) {
-    console.error("Failed to emit tab event:", error);
-    return false;
-  }
+  await realtime.channel(`device-${deviceId}`).emit("tab.new", tab);
+  return true;
 };
 
 export const isRedisConfigured = (): boolean => {

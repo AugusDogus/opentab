@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { env } from "~/env";
 
-// Schema for realtime events - must match the one in packages/api/src/redis.ts
 const schema = {
   tab: {
     new: z.object({
