@@ -110,14 +110,16 @@ jobs:
               with:
                   path: artifacts
 
-            - name: Create Release
-              run: bunx changelogithub
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Generate Changelog
+              id: changelog
+              run: |
+                  bunx changelogithub --dry > changelog.md 2>&1 || true
+                  cat changelog.md
 
-            - name: Upload Release Assets
-              uses: softprops/action-gh-release@v2
+            - name: Create Release
+              uses: softprops/action-gh-release@v2.2.1
               with:
+                  body_path: changelog.md
                   files: |
                       artifacts/extension/*
                       artifacts/native/*
