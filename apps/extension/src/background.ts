@@ -1,12 +1,17 @@
-import type { AppRouter } from "@opentab/api/routers";
-import { createTRPCClient, httpBatchLink, httpSubscriptionLink } from "@trpc/client";
+/// <reference lib="webworker" />
 
-import { env } from "~env";
+import type { AppRouter } from "@opentab/api/routers"
+import { createTRPCClient, httpBatchLink } from "@trpc/client"
+
+import { env } from "~env"
+
+// Declare service worker global scope
+declare const self: ServiceWorkerGlobalScope
 
 // Storage keys
-const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier";
+const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier"
 
-// Create tRPC client for background script (mutations and queries)
+// Create tRPC client for background script
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
@@ -14,148 +19,140 @@ const trpcClient = createTRPCClient<AppRouter>({
       fetch(url, options) {
         return fetch(url, {
           ...options,
-          credentials: "include",
-        });
-      },
-    }),
-  ],
-});
-
-// Create subscription client with SSE link
-const subscriptionClient = createTRPCClient<AppRouter>({
-  links: [
-    httpSubscriptionLink({
-      url: `${env.PLASMO_PUBLIC_SERVER_URL}/api/trpc`,
-      eventSourceOptions: () => ({
-        withCredentials: true,
-      }),
-    }),
-  ],
-});
+          credentials: "include"
+        })
+      }
+    })
+  ]
+})
 
 // Generate or retrieve device identifier
 const getDeviceIdentifier = async (): Promise<string> => {
-  const stored = await chrome.storage.local.get(DEVICE_IDENTIFIER_KEY);
+  const stored = await chrome.storage.local.get(DEVICE_IDENTIFIER_KEY)
 
   if (stored[DEVICE_IDENTIFIER_KEY]) {
-    return stored[DEVICE_IDENTIFIER_KEY] as string;
+    return stored[DEVICE_IDENTIFIER_KEY] as string
   }
 
-  const newId = `extension-${crypto.randomUUID()}`;
-  await chrome.storage.local.set({ [DEVICE_IDENTIFIER_KEY]: newId });
-  return newId;
-};
+  const newId = `extension-${crypto.randomUUID()}`
+  await chrome.storage.local.set({ [DEVICE_IDENTIFIER_KEY]: newId })
+  return newId
+}
 
-// Register device with server
+const subscribeToWebPush = async (): Promise<PushSubscription | null> => {
+  try {
+    const registration = await self.registration
+    let subscription = await registration.pushManager.getSubscription()
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: false,
+        applicationServerKey: Uint8Array.fromBase64(
+          env.PLASMO_PUBLIC_VAPID_PUBLIC_KEY,
+          {
+            alphabet: "base64url"
+          }
+        )
+      })
+    }
+
+    return subscription
+  } catch (error) {
+    console.error("Failed to subscribe to Web Push:", error)
+    return null
+  }
+}
+
 const registerDevice = async (): Promise<void> => {
   try {
-    const deviceIdentifier = await getDeviceIdentifier();
+    const deviceIdentifier = await getDeviceIdentifier()
+    const pushSubscription = await subscribeToWebPush()
+
     await trpcClient.device.register.mutate({
       deviceType: "browser_extension",
       deviceName: "Chrome Extension",
       deviceIdentifier,
-    });
-    console.log("Device registered successfully");
-  } catch (error) {
-    // Silently fail if not authenticated
-    console.log("Device registration skipped (not authenticated):", error);
-  }
-};
-
-// Send current tab to other devices
-const sendTabToDevices = async (url: string, title?: string): Promise<void> => {
-  const deviceIdentifier = await getDeviceIdentifier();
-
-  try {
-    const result = await trpcClient.tab.send.mutate({
-      url,
-      title,
-      sourceDeviceIdentifier: deviceIdentifier,
-    });
-    console.log(
-      `Tab sent to ${result.sentToMobile} mobile and ${result.sentToExtensions} extension devices`,
-    );
-  } catch (error) {
-    console.error("Failed to send tab:", error);
-  }
-};
-
-// Track current subscription for cleanup
-let currentUnsubscribe: { unsubscribe: () => void } | null = null;
-
-// Subscribe to new tabs via SSE
-const subscribeToTabs = async (): Promise<void> => {
-  const deviceIdentifier = await getDeviceIdentifier();
-
-  // Cleanup previous subscription if exists
-  if (currentUnsubscribe) {
-    currentUnsubscribe.unsubscribe();
-    currentUnsubscribe = null;
-  }
-
-  currentUnsubscribe = subscriptionClient.tab.onNewTab.subscribe(
-    { deviceIdentifier },
-    {
-      onData: async (tab) => {
-        try {
-          // Open the tab in a new tab
-          const createdTab = await chrome.tabs.create({ url: tab.url, active: false });
-
-          try {
-            // Mark as delivered
-            await trpcClient.tab.markDelivered.mutate({ tabId: tab.id });
-            console.log("Opened tab from subscription:", tab.url);
-          } catch (markError) {
-            // If marking failed, close the tab to prevent duplicates on reconnect
-            console.error("Failed to mark tab as delivered, closing tab:", markError);
-            if (createdTab?.id) {
-              await chrome.tabs.remove(createdTab.id);
+      webPushSubscription: pushSubscription
+        ? {
+            endpoint: pushSubscription.endpoint,
+            keys: {
+              p256dh: btoa(
+                String.fromCharCode(
+                  ...new Uint8Array(pushSubscription.getKey("p256dh")!)
+                )
+              ),
+              auth: btoa(
+                String.fromCharCode(
+                  ...new Uint8Array(pushSubscription.getKey("auth")!)
+                )
+              )
             }
           }
-        } catch (error) {
-          console.error("Failed to open tab from subscription:", error);
-        }
-      },
-      onError: (error) => {
-        console.log("Tab subscription error:", error);
-        currentUnsubscribe = null;
-        // Retry subscription after a delay
-        setTimeout(() => subscribeToTabs(), 5000);
-      },
-      onComplete: () => {
-        console.log("Tab subscription completed, reconnecting...");
-        currentUnsubscribe = null;
-        // Reconnect on complete
-        setTimeout(() => subscribeToTabs(), 1000);
-      },
-    },
-  );
-};
+        : undefined
+    })
+  } catch {
+    // Not authenticated
+  }
+}
 
-// Create context menu on install
+const sendTabToDevices = async (url: string, title?: string): Promise<void> => {
+  const deviceIdentifier = await getDeviceIdentifier()
+
+  try {
+    await trpcClient.tab.send.mutate({
+      url,
+      title,
+      sourceDeviceIdentifier: deviceIdentifier
+    })
+  } catch (error) {
+    console.error("Failed to send tab:", error)
+  }
+}
+
+const openAndMarkTab = async (tabId: string, url: string): Promise<void> => {
+  const createdTab = await chrome.tabs.create({ url, active: true })
+
+  try {
+    await trpcClient.tab.markDelivered.mutate({ tabId })
+  } catch {
+    // If marking failed, close the tab to prevent duplicates on reconnect
+    if (createdTab?.id) {
+      await chrome.tabs.remove(createdTab.id)
+    }
+  }
+}
+
+self.addEventListener("push", (event: PushEvent) => {
+  if (!event.data) return
+
+  const data = event.data.json() as {
+    type: string
+    tabId: string
+    url: string
+    title: string | null
+  }
+
+  if (data.type === "new_tab") {
+    event.waitUntil(openAndMarkTab(data.tabId, data.url))
+  }
+})
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "opentab-action",
     title: "Send to your devices",
-    contexts: ["all", "action"],
-  });
+    contexts: ["all", "action"]
+  })
 
-  // Register device and start subscription
-  registerDevice()
-    .then(() => subscribeToTabs())
-    .catch((err) => console.error("Initialization failed:", err));
-});
+  registerDevice().catch((err) => console.error("Registration failed:", err))
+})
 
-// Also register on startup
 chrome.runtime.onStartup.addListener(() => {
-  registerDevice()
-    .then(() => subscribeToTabs())
-    .catch((err) => console.error("Initialization failed:", err));
-});
+  registerDevice().catch((err) => console.error("Registration failed:", err))
+})
 
-// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "opentab-action" && tab?.url) {
-    await sendTabToDevices(tab.url, tab.title);
+    await sendTabToDevices(tab.url, tab.title)
   }
-});
+})

@@ -1,3 +1,4 @@
 export const env = {
   PLASMO_PUBLIC_SERVER_URL: process.env.PLASMO_PUBLIC_SERVER_URL!,
+  PLASMO_PUBLIC_VAPID_PUBLIC_KEY: process.env.PLASMO_PUBLIC_VAPID_PUBLIC_KEY!,
 } as const;

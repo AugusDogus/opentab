@@ -12,8 +12,10 @@ export const device = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     deviceType: text("device_type", { enum: ["mobile", "browser_extension"] }).notNull(),
     deviceName: text("device_name"),
-    // For mobile: Expo push token, For extension: unique identifier
+    // For mobile: Expo push token
     pushToken: text("push_token"),
+    // For browser extensions: Web Push subscription (JSON string containing endpoint, keys)
+    webPushSubscription: text("web_push_subscription"),
     // Unique identifier for the device (helps avoid duplicate registrations)
     deviceIdentifier: text("device_identifier").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })

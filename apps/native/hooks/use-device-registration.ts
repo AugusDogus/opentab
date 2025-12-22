@@ -1,12 +1,17 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { isDevice } from "expo-device";
+import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { useEffect, useRef, useCallback } from "react";
 
 import { useDeviceIdentifier } from "@/hooks/use-device-identifier";
 import { trpc } from "@/utils/trpc";
+
+const openUrl = (url: string) => {
+  Linking.openURL(url);
+};
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({
@@ -63,23 +68,14 @@ const getPushToken = async (): Promise<string | null> => {
   return tokenData.data;
 };
 
-type UseDeviceRegistrationOptions = {
-  onUrlReceived?: (url: string) => void;
-};
-
-export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}) => {
+export const useDeviceRegistration = () => {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
-  const onUrlReceivedRef = useRef(options.onUrlReceived);
+  const hasHandledInitialNotification = useRef(false);
   const { deviceIdentifier, isLoading: isDeviceIdLoading } = useDeviceIdentifier();
 
   // Query the devices list to check if this device is already registered
   const devices = useQuery(trpc.device.list.queryOptions());
-
-  // Keep the ref up to date with the latest callback
-  useEffect(() => {
-    onUrlReceivedRef.current = options.onUrlReceived;
-  }, [options.onUrlReceived]);
 
   const registerDeviceMutation = useMutation(
     trpc.device.register.mutationOptions({
@@ -132,19 +128,20 @@ export const useDeviceRegistration = (options: UseDeviceRegistrationOptions = {}
   }, [registerDeviceMutation, deviceIdentifier, devices.data]);
 
   useEffect(() => {
-    // Handle notifications received while app is foregrounded
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log("Notification received:", notification);
-    });
+    // Handle cold start from notification
+    if (!hasHandledInitialNotification.current) {
+      hasHandledInitialNotification.current = true;
+      Notifications.getLastNotificationResponseAsync().then((response) => {
+        const url = response?.notification.request.content.data?.url as string | undefined;
+        if (url) openUrl(url);
+      });
+    }
 
-    // Handle notification tap (when user taps on notification)
+    notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
+
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      const url = data?.url as string | undefined;
-
-      if (url && onUrlReceivedRef.current) {
-        onUrlReceivedRef.current(url);
-      }
+      const url = response.notification.request.content.data?.url as string | undefined;
+      if (url) openUrl(url);
     });
 
     return () => {

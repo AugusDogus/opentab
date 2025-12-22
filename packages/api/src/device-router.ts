@@ -9,10 +9,21 @@ import { protectedProcedure, router } from "./index";
 
 const deviceTypeSchema = z.enum(["mobile", "browser_extension"]);
 
+// Web Push subscription object (from PushSubscription.toJSON())
+const webPushSubscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({
+    p256dh: z.string(),
+    auth: z.string(),
+  }),
+});
+
 const registerDeviceInput = z.object({
   deviceType: deviceTypeSchema,
   deviceName: z.string().optional(),
   pushToken: z.string().optional(),
+  // For browser extensions: Web Push subscription
+  webPushSubscription: webPushSubscriptionSchema.optional(),
   deviceIdentifier: z.string(),
 });
 
@@ -29,6 +40,11 @@ export const deviceRouter = router({
       where: and(eq(device.userId, userId), eq(device.deviceIdentifier, input.deviceIdentifier)),
     });
 
+    // Serialize web push subscription if provided
+    const webPushSubscriptionJson = input.webPushSubscription
+      ? JSON.stringify(input.webPushSubscription)
+      : undefined;
+
     if (existingDevice) {
       // Update existing device
       const [updatedDevice] = await db
@@ -36,6 +52,7 @@ export const deviceRouter = router({
         .set({
           deviceName: input.deviceName ?? existingDevice.deviceName,
           pushToken: input.pushToken ?? existingDevice.pushToken,
+          webPushSubscription: webPushSubscriptionJson ?? existingDevice.webPushSubscription,
           deviceType: input.deviceType,
         })
         .where(eq(device.id, existingDevice.id))
@@ -54,6 +71,7 @@ export const deviceRouter = router({
         deviceType: input.deviceType,
         deviceName: input.deviceName,
         pushToken: input.pushToken,
+        webPushSubscription: webPushSubscriptionJson,
         deviceIdentifier: input.deviceIdentifier,
       })
       .returning();

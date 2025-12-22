@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import * as Linking from "expo-linking";
 import {
   Avatar,
   Button,
@@ -12,7 +11,7 @@ import {
   useThemeColor,
 } from "heroui-native";
 import { useCallback, useEffect, useState } from "react";
-import { Modal, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 
@@ -24,65 +23,6 @@ import { queryClient, trpc } from "@/utils/trpc";
 
 const StyledIonicons = withUniwind(Ionicons);
 const StyledSafeAreaView = withUniwind(SafeAreaView);
-
-type ShareModalProps = {
-  visible: boolean;
-  url: string | null;
-  onSend: () => void;
-  onCancel: () => void;
-  isSending: boolean;
-  sendResult: { sentToMobile: number; sentToExtensions: number } | null;
-  sendError: { message: string } | null;
-};
-
-function ShareModal({
-  visible,
-  url,
-  onSend,
-  onCancel,
-  isSending,
-  sendResult,
-  sendError,
-}: ShareModalProps) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View className="flex-1 items-center justify-center bg-black/50 px-6">
-        <Surface className="w-full max-w-sm gap-4">
-          <Text className="text-lg font-medium text-foreground text-center">Send to Devices</Text>
-
-          <Text className="text-sm text-muted text-center" numberOfLines={2}>
-            {url}
-          </Text>
-
-          {sendResult && (
-            <Text className="text-sm text-success text-center">
-              Sent to {sendResult.sentToMobile} mobile and {sendResult.sentToExtensions} extension
-              devices
-            </Text>
-          )}
-
-          {sendError && (
-            <Text className="text-sm text-danger text-center">{sendError.message}</Text>
-          )}
-
-          <View className="flex-row gap-3 mt-2">
-            <Button variant="ghost" onPress={onCancel} className="flex-1 rounded-lg">
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onPress={onSend}
-              isDisabled={isSending || sendResult !== null}
-              className="flex-1 rounded-lg"
-            >
-              {isSending ? "Sending..." : sendResult ? "Sent!" : "Send"}
-            </Button>
-          </View>
-        </Surface>
-      </View>
-    </Modal>
-  );
-}
 
 type AuthenticatedViewProps = {
   userName: string;
@@ -253,19 +193,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const backgroundColor = useThemeColor("background");
 
-  const handleUrlReceived = useCallback((url: string) => {
-    // Open the URL in the default browser
-    Linking.openURL(url).catch((err) => {
-      console.error("Failed to open URL:", err);
-    });
-  }, []);
+  const { registerDevice, deviceIdentifier } = useDeviceRegistration();
 
-  const { registerDevice, deviceIdentifier } = useDeviceRegistration({
-    onUrlReceived: handleUrlReceived,
-  });
-
-  const { sharedUrl, sendToDevices, isSending, sendResult, sendError, clearSharedUrl } =
-    useShareIntent();
+  // Share intent auto-sends to devices, no UI needed
+  useShareIntent();
 
   // Register device when user is authenticated
   useEffect(() => {
@@ -313,15 +244,6 @@ export default function Home() {
           userName={data.user.name}
           userImage={data.user.image}
           deviceIdentifier={deviceIdentifier}
-        />
-        <ShareModal
-          visible={sharedUrl !== null}
-          url={sharedUrl}
-          onSend={sendToDevices}
-          onCancel={clearSharedUrl}
-          isSending={isSending}
-          sendResult={sendResult}
-          sendError={sendError}
         />
       </StyledSafeAreaView>
     );
