@@ -52,6 +52,7 @@
   "packageManager": "bun@1.3.5",
   "patchedDependencies": {
     "plasmo@0.90.5": "patches/plasmo@0.90.5.patch",
-    "xcode@3.0.1": "patches/xcode@3.0.1.patch"
+    "xcode@3.0.1": "patches/xcode@3.0.1.patch",
+    "@plasmohq/parcel-runtime@0.25.2": "patches/@plasmohq%2Fparcel-runtime@0.25.2.patch"
   }
 }

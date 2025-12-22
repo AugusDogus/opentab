@@ -1,41 +1,57 @@
 import type { AppRouter } from "@opentab/api/routers"
-import { createTRPCClient, httpBatchLink } from "@trpc/client"
+import {
+  createTRPCClient,
+  httpBatchLink,
+  httpSubscriptionLink
+} from "@trpc/client"
 
 import { env } from "~env"
 
 const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier"
-const POLL_INTERVAL_MS = 5000 // 5 seconds
+
+// MV2 uses callback-based APIs, wrap in promises
+const storageGet = (key: string): Promise<Record<string, unknown>> =>
+  new Promise((resolve) => chrome.storage.local.get(key, resolve))
+
+const storageSet = (items: Record<string, unknown>): Promise<void> =>
+  new Promise((resolve) => chrome.storage.local.set(items, resolve))
 
 const trpcClient = createTRPCClient<AppRouter>({
+  links: [
+    httpSubscriptionLink({
+      url: `${env.PLASMO_PUBLIC_SERVER_URL}/api/trpc`,
+      eventSourceOptions: () => ({ withCredentials: true })
+    })
+  ]
+})
+
+const trpcMutationClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: `${env.PLASMO_PUBLIC_SERVER_URL}/api/trpc`,
       fetch(url, options) {
-        return fetch(url, {
-          ...options,
-          credentials: "include"
-        })
+        return fetch(url, { ...options, credentials: "include" })
       }
     })
   ]
 })
 
 const getDeviceIdentifier = async (): Promise<string> => {
-  const stored = await chrome.storage.local.get(DEVICE_IDENTIFIER_KEY)
+  const stored = await storageGet(DEVICE_IDENTIFIER_KEY)
 
   if (stored[DEVICE_IDENTIFIER_KEY]) {
     return stored[DEVICE_IDENTIFIER_KEY] as string
   }
 
   const newId = `extension-${crypto.randomUUID()}`
-  await chrome.storage.local.set({ [DEVICE_IDENTIFIER_KEY]: newId })
+  await storageSet({ [DEVICE_IDENTIFIER_KEY]: newId })
   return newId
 }
 
 const registerDevice = async (): Promise<void> => {
   try {
     const deviceIdentifier = await getDeviceIdentifier()
-    await trpcClient.device.register.mutate({
+    await trpcMutationClient.device.register.mutate({
       deviceType: "browser_extension",
       deviceName: "Chrome Extension",
       deviceIdentifier
@@ -49,7 +65,7 @@ const sendTabToDevices = async (url: string, title?: string): Promise<void> => {
   const deviceIdentifier = await getDeviceIdentifier()
 
   try {
-    await trpcClient.tab.send.mutate({
+    await trpcMutationClient.tab.send.mutate({
       url,
       title,
       sourceDeviceIdentifier: deviceIdentifier
@@ -59,54 +75,60 @@ const sendTabToDevices = async (url: string, title?: string): Promise<void> => {
   }
 }
 
-const openAndMarkTab = async (tabId: string, url: string): Promise<void> => {
-  const createdTab = await chrome.tabs.create({ url, active: true })
-
-  try {
-    await trpcClient.tab.markDelivered.mutate({ tabId })
-  } catch {
-    if (createdTab?.id) {
-      await chrome.tabs.remove(createdTab.id)
-    }
-  }
-}
-
-const pollForTabs = async (): Promise<void> => {
-  try {
-    const deviceIdentifier = await getDeviceIdentifier()
-    const pendingTabs = await trpcClient.tab.getPending.query({
-      deviceIdentifier
+const openAndMarkTab = (tabId: string, url: string): void => {
+  chrome.tabs.create({ url, active: true }, (createdTab) => {
+    trpcMutationClient.tab.markDelivered.mutate({ tabId }).catch(() => {
+      if (createdTab?.id) {
+        chrome.tabs.remove(createdTab.id)
+      }
     })
-
-    for (const tab of pendingTabs) {
-      await openAndMarkTab(tab.id, tab.url)
-    }
-  } catch {
-    // Not authenticated or network error
-  }
+  })
 }
 
-const startPolling = () => {
-  pollForTabs()
-  setInterval(pollForTabs, POLL_INTERVAL_MS)
+let currentSubscription: { unsubscribe: () => void } | null = null
+
+const subscribeToTabs = async (): Promise<void> => {
+  const deviceIdentifier = await getDeviceIdentifier()
+
+  if (currentSubscription) {
+    currentSubscription.unsubscribe()
+    currentSubscription = null
+  }
+
+  currentSubscription = trpcClient.tab.onNewTab.subscribe(
+    { deviceIdentifier },
+    {
+      onData: (tab) => {
+        openAndMarkTab(tab.id, tab.url)
+      },
+      onError: () => {
+        currentSubscription = null
+        setTimeout(subscribeToTabs, 5000)
+      },
+      onComplete: () => {
+        currentSubscription = null
+        setTimeout(subscribeToTabs, 1000)
+      }
+    }
+  )
 }
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "opentab-action",
     title: "Send to your devices",
-    contexts: ["all", "action"]
+    contexts: ["all", "browser_action"]
   })
 
-  registerDevice().then(() => startPolling())
+  registerDevice().then(() => subscribeToTabs())
 })
 
 chrome.runtime.onStartup.addListener(() => {
-  registerDevice().then(() => startPolling())
+  registerDevice().then(() => subscribeToTabs())
 })
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "opentab-action" && tab?.url) {
-    await sendTabToDevices(tab.url, tab.title)
+    sendTabToDevices(tab.url, tab.title)
   }
 })
