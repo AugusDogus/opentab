@@ -32,15 +32,20 @@ export default {
       "expo-web-browser",
       "@rnrepo/expo-config-plugin",
       [
+        "expo-notifications",
+        {
+          icon: "./assets/images/android-icon-monochrome.png",
+          color: "#000000",
+        },
+      ],
+      [
         "expo-share-intent",
         {
-          // iOS: Enable URL and webpage sharing
           iosActivationRules: {
             NSExtensionActivationSupportsWebURLWithMaxCount: 1,
             NSExtensionActivationSupportsWebPageWithMaxCount: 1,
             NSExtensionActivationSupportsText: true,
           },
-          // Android: Enable text/URL sharing
           androidIntentFilters: ["text/*"],
         },
       ],
