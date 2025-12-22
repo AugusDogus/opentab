@@ -7,32 +7,7 @@ import { device } from "@opentab/db/schema/device";
 import { pendingTab } from "@opentab/db/schema/pending-tab";
 
 import { protectedProcedure, router } from "./index";
-
-type TabEventListener = (tab: { id: string; url: string; title: string | null }) => void;
-const tabEventListeners = new Map<string, Set<TabEventListener>>();
-
-const emitNewTab = (
-  targetDeviceId: string,
-  tab: { id: string; url: string; title: string | null },
-): void => {
-  const listeners = tabEventListeners.get(targetDeviceId);
-  if (listeners) {
-    listeners.forEach((listener) => listener(tab));
-  }
-};
-
-const addTabListener = (deviceId: string, listener: TabEventListener): (() => void) => {
-  const listeners = tabEventListeners.get(deviceId) ?? new Set();
-  listeners.add(listener);
-  tabEventListeners.set(deviceId, listeners);
-
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) {
-      tabEventListeners.delete(deviceId);
-    }
-  };
-};
+import { emitTabEvent } from "./redis";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -150,13 +125,16 @@ export const tabRouter = router({
     if (pendingTabs.length > 0) {
       await db.insert(pendingTab).values(pendingTabs);
 
-      pendingTabs.forEach((tab) => {
-        emitNewTab(tab.targetDeviceId, {
-          id: tab.id,
-          url: tab.url,
-          title: tab.title,
-        });
-      });
+      // Emit to Upstash Realtime for instant delivery
+      await Promise.all(
+        pendingTabs.map((tab) =>
+          emitTabEvent(tab.targetDeviceId, {
+            id: tab.id,
+            url: tab.url,
+            title: tab.title,
+          }),
+        ),
+      );
     }
 
     return {
@@ -211,9 +189,11 @@ export const tabRouter = router({
       return { success: true };
     }),
 
-  onNewTab: protectedProcedure
+  // Get the device ID for realtime subscription
+  // The extension will use this to connect to /api/realtime?channel=device-{deviceId}
+  getDeviceId: protectedProcedure
     .input(z.object({ deviceIdentifier: z.string() }))
-    .subscription(async function* ({ ctx, input, signal }) {
+    .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
       const targetDevice = await db.query.device.findFirst({
@@ -227,43 +207,6 @@ export const tabRouter = router({
         });
       }
 
-      const existingTabs = await db.query.pendingTab.findMany({
-        where: and(eq(pendingTab.targetDeviceId, targetDevice.id), eq(pendingTab.delivered, false)),
-        orderBy: (tab, { asc }) => [asc(tab.createdAt)],
-      });
-
-      for (const tab of existingTabs) {
-        yield { id: tab.id, url: tab.url, title: tab.title };
-      }
-
-      const tabQueue: Array<{ id: string; url: string; title: string | null }> = [];
-      let resolveWait: (() => void) | null = null;
-
-      const cleanup = addTabListener(targetDevice.id, (tab) => {
-        tabQueue.push(tab);
-        if (resolveWait) {
-          resolveWait();
-          resolveWait = null;
-        }
-      });
-
-      try {
-        if (!signal) return;
-
-        while (!signal.aborted) {
-          if (tabQueue.length === 0) {
-            await new Promise<void>((resolve) => {
-              resolveWait = resolve;
-              signal.addEventListener("abort", () => resolve(), { once: true });
-            });
-          }
-
-          while (tabQueue.length > 0) {
-            yield tabQueue.shift()!;
-          }
-        }
-      } finally {
-        cleanup();
-      }
+      return { deviceId: targetDevice.id };
     }),
 });

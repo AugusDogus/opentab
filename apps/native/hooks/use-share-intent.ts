@@ -42,7 +42,7 @@ export const useShareIntent = () => {
     } else if (shareIntent.text) {
       url = extractUrlFromText(shareIntent.text);
       title = shareIntent.meta?.title ?? null;
-    }
+      }
 
     if (!url) return;
     if (processedIntentRef.current === url) return;
