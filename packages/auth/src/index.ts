@@ -4,8 +4,13 @@ import * as schema from "@opentab/db/schema/auth";
 import type { BetterAuthOptions } from "better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { oAuthProxy } from "better-auth/plugins";
 
-export function initAuth(options: { baseUrl: string; extensionId?: string }) {
+export function initAuth(options: {
+  baseUrl: string;
+  extensionId?: string;
+  productionUrl?: string;
+}) {
   const config = {
     database: drizzleAdapter(db, {
       provider: "sqlite",
@@ -27,11 +32,17 @@ export function initAuth(options: { baseUrl: string; extensionId?: string }) {
       github: {
         clientId: process.env.GITHUB_CLIENT_ID!,
         clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        redirectURI: options.productionUrl
+          ? `${options.productionUrl}/api/auth/callback/github`
+          : undefined,
       },
       apple: {
         clientId: process.env.APPLE_CLIENT_ID!,
         clientSecret: process.env.APPLE_CLIENT_SECRET!,
         appBundleIdentifier: process.env.APPLE_APP_BUNDLE_IDENTIFIER,
+        redirectURI: options.productionUrl
+          ? `${options.productionUrl}/api/auth/callback/apple`
+          : undefined,
       },
     },
     advanced: {
@@ -41,7 +52,7 @@ export function initAuth(options: { baseUrl: string; extensionId?: string }) {
         httpOnly: true,
       },
     },
-    plugins: [expo()],
+    plugins: [expo(), oAuthProxy()],
   } satisfies BetterAuthOptions;
 
   return betterAuth(config);
