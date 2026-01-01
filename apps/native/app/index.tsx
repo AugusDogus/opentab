@@ -214,6 +214,15 @@ export default function Home() {
     setIsLoading(false);
   }, []);
 
+  const handleAppleSignIn = useCallback(async () => {
+    setIsLoading(true);
+    await authClient.signIn.social({
+      provider: "apple",
+      callbackURL: "/", // Root path - expo plugin converts to deep link (exp://...)
+    });
+    setIsLoading(false);
+  }, []);
+
   // Splash screen handles the loading state, return null while pending
   if (isPending) {
     return null;
@@ -257,22 +266,40 @@ export default function Home() {
         <Text className="text-sm text-muted">sign in to continue</Text>
       </View>
 
-      {/* Sign in button */}
-      <Button
-        variant="secondary"
-        onPress={handleGitHubSignIn}
-        isDisabled={isLoading}
-        className="rounded-lg bg-foreground min-w-52"
-      >
-        {isLoading ? (
-          <Spinner size="sm" color={backgroundColor} />
-        ) : (
-          <>
-            <StyledIonicons name="logo-github" size={20} className="text-background" />
-            <Button.Label className="text-background">Continue with GitHub</Button.Label>
-          </>
-        )}
-      </Button>
+      {/* Sign in buttons */}
+      <View className="gap-3 min-w-52">
+        <Button
+          variant="secondary"
+          onPress={handleAppleSignIn}
+          isDisabled={isLoading}
+          className="rounded-lg bg-foreground"
+        >
+          {isLoading ? (
+            <Spinner size="sm" color={backgroundColor} />
+          ) : (
+            <>
+              <StyledIonicons name="logo-apple" size={20} className="text-background" />
+              <Button.Label className="text-background">Continue with Apple</Button.Label>
+            </>
+          )}
+        </Button>
+
+        <Button
+          variant="secondary"
+          onPress={handleGitHubSignIn}
+          isDisabled={isLoading}
+          className="rounded-lg bg-foreground"
+        >
+          {isLoading ? (
+            <Spinner size="sm" color={backgroundColor} />
+          ) : (
+            <>
+              <StyledIonicons name="logo-github" size={20} className="text-background" />
+              <Button.Label className="text-background">Continue with GitHub</Button.Label>
+            </>
+          )}
+        </Button>
+      </View>
 
       {/* Branding */}
       <View className="absolute bottom-8">

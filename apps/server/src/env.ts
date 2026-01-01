@@ -6,12 +6,15 @@ export const env = createEnv({
     DATABASE_URL: z.string().min(1),
     DATABASE_AUTH_TOKEN: z.string().optional(),
     BETTER_AUTH_SECRET: z.string().min(1),
-    BETTER_AUTH_URL: z.string().url().optional(),
+    BETTER_AUTH_URL: z.url().optional(),
     GITHUB_CLIENT_ID: z.string().min(1),
     GITHUB_CLIENT_SECRET: z.string().min(1),
+    APPLE_CLIENT_ID: z.string().min(1),
+    APPLE_CLIENT_SECRET: z.string().min(1),
+    APPLE_APP_BUNDLE_IDENTIFIER: z.string(),
     CHROME_EXTENSION_ID: z.string().optional(),
     // Upstash Redis for real-time pub/sub
-    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
     // Vercel system env vars
     VERCEL_ENV: z.enum(["development", "preview", "production"]).optional(),
