@@ -2,6 +2,7 @@ import type { AppRouter } from "@opentab/api/routers"
 import { createTRPCClient, httpBatchLink } from "@trpc/client"
 
 import { env } from "~env"
+import { RealtimeClient } from "~lib/realtime-client"
 
 const DEVICE_IDENTIFIER_KEY = "opentab_device_identifier"
 const DEVICE_ID_KEY = "opentab_device_id"
@@ -22,6 +23,10 @@ const trpcClient = createTRPCClient<AppRouter>({
     })
   ]
 })
+
+// Realtime client with proper connection management
+let realtimeClient: RealtimeClient | null = null
+let unsubscribe: (() => void) | null = null
 
 const getDeviceIdentifier = async (): Promise<string> => {
   const stored = await storageGet(DEVICE_IDENTIFIER_KEY)
@@ -96,32 +101,40 @@ const processPendingTabs = async (): Promise<void> => {
   }
 }
 
-let eventSource: EventSource | null = null
-
 const subscribeToRealtime = async (): Promise<void> => {
   const deviceId = await getDeviceId()
   if (!deviceId) return
 
-  if (eventSource) {
-    eventSource.close()
-    eventSource = null
+  // Clean up existing subscription
+  if (unsubscribe) {
+    unsubscribe()
+    unsubscribe = null
   }
 
-  const url = `${env.PLASMO_PUBLIC_SERVER_URL}/api/realtime?channel=device-${deviceId}`
-  eventSource = new EventSource(url, { withCredentials: true })
+  // Create client if needed
+  if (!realtimeClient) {
+    realtimeClient = new RealtimeClient({
+      url: `${env.PLASMO_PUBLIC_SERVER_URL}/api/realtime`,
+      withCredentials: true,
+      maxReconnectAttempts: 5,
+      onStatusChange: (status) => {
+        console.log(`[OpenTab] Realtime connection: ${status}`)
+      }
+    })
+  }
 
-  eventSource.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data.event === "tab.new" && data.data) {
-      openAndMarkTab(data.data.id, data.data.url)
+  // Subscribe to device-specific channel
+  unsubscribe = realtimeClient.subscribe({
+    channels: [`device-${deviceId}`],
+    events: ["tab.new"],
+    onData: (payload) => {
+      console.log("[OpenTab] Received tab:", payload)
+      const data = payload.data as { id: string; url: string }
+      if (data?.id && data?.url) {
+        openAndMarkTab(data.id, data.url)
+      }
     }
-  }
-
-  eventSource.onerror = () => {
-    eventSource?.close()
-    eventSource = null
-    setTimeout(subscribeToRealtime, 5000)
-  }
+  })
 }
 
 const initialize = async (): Promise<void> => {

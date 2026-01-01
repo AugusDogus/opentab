@@ -1,0 +1,57 @@
+diff --git a/dist/server/handler.js b/dist/server/handler.js
+index 429bf728958019832fc67ed392c06b4f16541427..490c22283b6f25b385bc60ffb0b4ec2c2c87731e 100644
+--- a/dist/server/handler.js
++++ b/dist/server/handler.js
+@@ -24,7 +24,8 @@ function handle(config) {
+     let subscriber;
+     let subCount = 0;
+     let reconnectTimeout;
+-    let keepaliveInterval;
++    let pingClientInterval;
++    let pingRedisInterval;
+     let isClosed = false;
+     let handleAbort;
+     let onSubscribe;
+@@ -41,7 +42,8 @@ function handle(config) {
+           if (isClosed) return;
+           isClosed = true;
+           clearTimeout(reconnectTimeout);
+-          clearInterval(keepaliveInterval);
++          clearInterval(pingClientInterval);
++          clearInterval(pingRedisInterval);
+           if (handleAbort) {
+             request.signal.removeEventListener("abort", handleAbort);
+           }
+@@ -159,15 +161,24 @@ function handle(config) {
+         subscriber.on("error", onError);
+         subscriber.on("unsubscribe", onUnsubscribe);
+         subscriber.on("message", onMessage);
+-        keepaliveInterval = setInterval(async () => {
+-          const channel = channels[0];
+-          if (channel) {
+-            await redis.publish(channel, {
+-              type: "ping",
+-              timestamp: Date.now()
+-            });
++        // Send ping directly to client every 30 seconds (no Redis overhead)
++        pingClientInterval = setInterval(() => {
++          const pingEvent = {
++            type: "ping",
++            timestamp: Date.now()
++          };
++          safeEnqueue(json(pingEvent));
++        }, 30000);
++        // Ping Redis every 4 minutes just to keep connection alive
++        pingRedisInterval = setInterval(async () => {
++          const pingEvent = {
++            type: "ping",
++            timestamp: Date.now()
++          };
++          for (const channel of channels) {
++            await redis.publish(`channel:${channel}`, pingEvent);
+           }
+-        }, 6e4);
++        }, 240000);
+       },
+       async cancel() {
+         if (isClosed) return;

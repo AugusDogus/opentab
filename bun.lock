@@ -19,7 +19,7 @@
     },
     "apps/extension": {
       "name": "@opentab/extension",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@opentab/api": "workspace:*",
         "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -56,7 +56,7 @@
     },
     "apps/native": {
       "name": "@opentab/native",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@better-auth/expo": "catalog:",
         "@expo/metro-runtime": "~6.1.2",
@@ -192,9 +192,10 @@
     },
   },
   "patchedDependencies": {
+    "xcode@3.0.1": "patches/xcode@3.0.1.patch",
     "@plasmohq/parcel-runtime@0.25.2": "patches/@plasmohq%2Fparcel-runtime@0.25.2.patch",
     "plasmo@0.90.5": "patches/plasmo@0.90.5.patch",
-    "xcode@3.0.1": "patches/xcode@3.0.1.patch",
+    "@upstash/realtime@1.0.0": "patches/@upstash%2Frealtime@1.0.0.patch",
   },
   "catalog": {
     "@better-auth/expo": "^1.4.7",
