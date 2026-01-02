@@ -13,7 +13,11 @@ export default {
       backgroundColor: "#000000",
     },
     ios: {
+      bundleIdentifier: "sh.opentab",
       icon: "./assets/images/icon.png",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       adaptiveIcon: {
@@ -21,7 +25,7 @@ export default {
         backgroundImage: "./assets/images/android-icon-background.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
-      package: "com.augusdogus.opentab",
+      package: "sh.opentab",
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
     },
     name: "opentab",
