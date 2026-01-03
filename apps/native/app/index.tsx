@@ -36,6 +36,9 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
     id: string;
     name: string;
   } | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const removeDeviceMutation = useMutation(
     trpc.device.remove.mutationOptions({
@@ -46,13 +49,24 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
     }),
   );
 
+  const handleDeleteAccount = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      await authClient.deleteUser();
+      queryClient.clear();
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+      setIsDeleting(false);
+      setShowDeleteAccount(false);
+    }
+  }, []);
+
   const handleConfirmRemove = useCallback(() => {
     if (deviceToRemove) {
       removeDeviceMutation.mutate({ deviceId: deviceToRemove.id });
     }
   }, [deviceToRemove, removeDeviceMutation]);
 
-  // Get initials from name for avatar fallback
   const initials = userName
     .split(" ")
     .map((n) => n[0])
@@ -62,7 +76,6 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
 
   return (
     <View className="flex-1 p-6">
-      {/* Header */}
       <View className="flex-row items-center justify-between mb-8">
         <View className="flex-row items-center gap-3">
           <Avatar size="sm" alt={userName} className="size-6">
@@ -74,17 +87,14 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
         <Button
           variant="ghost"
           size="sm"
+          isIconOnly
           className="rounded-lg"
-          onPress={() => {
-            authClient.signOut();
-            queryClient.invalidateQueries();
-          }}
+          onPress={() => setShowSettings(true)}
         >
-          sign out
+          <StyledIonicons name="settings-outline" size={18} className="text-muted" />
         </Button>
       </View>
 
-      {/* Registered Devices */}
       <Surface variant="secondary" className="gap-3">
         <Text className="text-xs tracking-wider uppercase text-muted">devices</Text>
         {devices.error ? (
@@ -143,12 +153,92 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
         )}
       </Surface>
 
-      {/* Branding */}
       <View className="absolute bottom-8 left-0 right-0 items-center">
         <Text className="text-xs tracking-widest uppercase text-muted opacity-50">opentab</Text>
       </View>
 
-      {/* Remove Device Dialog */}
+      <Dialog isOpen={showSettings} onOpenChange={(open: boolean) => setShowSettings(open)}>
+        <Dialog.Portal>
+          <DialogBlurBackdrop />
+          <Dialog.Content>
+            <Dialog.Close className="self-end -mb-2 z-50" />
+            <View className="mb-3 gap-1.5">
+              <Dialog.Title>Settings</Dialog.Title>
+            </View>
+            <View className="gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-lg justify-start"
+                onPress={() => {
+                  authClient.signOut();
+                  queryClient.invalidateQueries();
+                  setShowSettings(false);
+                }}
+              >
+                <StyledIonicons name="log-out-outline" size={18} className="text-foreground" />
+                <Button.Label>Sign Out</Button.Label>
+              </Button>
+              <View className="h-px bg-border my-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-lg justify-start"
+                onPress={() => {
+                  setShowSettings(false);
+                  setShowDeleteAccount(true);
+                }}
+              >
+                <StyledIonicons name="trash-outline" size={18} className="text-danger" />
+                <Button.Label className="text-danger">Delete Account</Button.Label>
+              </Button>
+            </View>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog>
+
+      <Dialog
+        isOpen={showDeleteAccount}
+        onOpenChange={(open: boolean) => {
+          if (!open && !isDeleting) setShowDeleteAccount(false);
+        }}
+      >
+        <Dialog.Portal>
+          <DialogBlurBackdrop />
+          <Dialog.Content>
+            <Dialog.Close className="self-end -mb-2 z-50" disabled={isDeleting} />
+            <View className="mb-5 gap-1.5">
+              <Dialog.Title>Delete Account</Dialog.Title>
+              <Dialog.Description>
+                Are you sure you want to delete your account? This action cannot be undone. All your
+                data, including registered devices, will be permanently removed.
+              </Dialog.Description>
+            </View>
+            <View className="flex-row justify-end gap-3">
+              <Dialog.Close asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg"
+                  isDisabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button
+                variant="danger"
+                size="sm"
+                className="rounded-lg"
+                onPress={handleDeleteAccount}
+                isDisabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete Account"}
+              </Button>
+            </View>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog>
+
       <Dialog
         isOpen={deviceToRemove !== null}
         onOpenChange={(open: boolean) => {
@@ -197,10 +287,8 @@ export default function Home() {
 
   const { registerDevice, deviceIdentifier } = useDeviceRegistration();
 
-  // Share intent auto-sends to devices, no UI needed
   useShareIntent();
 
-  // Register device when user is authenticated
   useEffect(() => {
     if (data?.user) {
       registerDevice();
@@ -216,7 +304,6 @@ export default function Home() {
     setLoadingProvider(null);
   }, []);
 
-  // Splash screen handles the loading state, return null while pending
   if (isPending) {
     return null;
   }
@@ -253,13 +340,11 @@ export default function Home() {
 
   return (
     <StyledSafeAreaView className="flex-1 items-center justify-center bg-background px-8">
-      {/* Logo/Title */}
       <View className="items-center gap-2 mb-8">
         <Text className="text-2xl font-medium text-foreground tracking-tight">opentab</Text>
         <Text className="text-sm text-muted">sign in to continue</Text>
       </View>
 
-      {/* Sign in buttons */}
       <View className="gap-3 min-w-52">
         <Button
           variant="secondary"
@@ -310,7 +395,6 @@ export default function Home() {
         </Button>
       </View>
 
-      {/* Branding */}
       <View className="absolute bottom-8">
         <Text className="text-xs tracking-widest uppercase text-muted opacity-50">opentab</Text>
       </View>

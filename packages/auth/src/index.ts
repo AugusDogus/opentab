@@ -52,6 +52,11 @@ export function initAuth(options: {
           : undefined,
       },
     },
+    user: {
+      deleteUser: {
+        enabled: true,
+      },
+    },
     advanced: {
       defaultCookieAttributes: {
         sameSite: "none",
