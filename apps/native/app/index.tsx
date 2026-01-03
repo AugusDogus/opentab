@@ -188,9 +188,11 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
   );
 }
 
+type Provider = "apple" | "google" | "github";
+
 export default function Home() {
   const { data, isPending, error } = authClient.useSession();
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
   const backgroundColor = useThemeColor("background");
 
   const { registerDevice, deviceIdentifier } = useDeviceRegistration();
@@ -205,31 +207,13 @@ export default function Home() {
     }
   }, [data?.user, registerDevice]);
 
-  const handleGitHubSignIn = useCallback(async () => {
-    setIsLoading(true);
+  const handleSignIn = useCallback(async (provider: Provider) => {
+    setLoadingProvider(provider);
     await authClient.signIn.social({
-      provider: "github",
+      provider,
       callbackURL: "/", // Root path - expo plugin converts to deep link (exp://...)
     });
-    setIsLoading(false);
-  }, []);
-
-  const handleAppleSignIn = useCallback(async () => {
-    setIsLoading(true);
-    await authClient.signIn.social({
-      provider: "apple",
-      callbackURL: "/", // Root path - expo plugin converts to deep link (exp://...)
-    });
-    setIsLoading(false);
-  }, []);
-
-  const handleGoogleSignIn = useCallback(async () => {
-    setIsLoading(true);
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/", // Root path - expo plugin converts to deep link (exp://...)
-    });
-    setIsLoading(false);
+    setLoadingProvider(null);
   }, []);
 
   // Splash screen handles the loading state, return null while pending
@@ -279,11 +263,11 @@ export default function Home() {
       <View className="gap-3 min-w-52">
         <Button
           variant="secondary"
-          onPress={handleAppleSignIn}
-          isDisabled={isLoading}
+          onPress={() => handleSignIn("apple")}
+          isDisabled={loadingProvider !== null}
           className="rounded-lg bg-foreground"
         >
-          {isLoading ? (
+          {loadingProvider === "apple" ? (
             <Spinner size="sm" color={backgroundColor} />
           ) : (
             <>
@@ -295,11 +279,11 @@ export default function Home() {
 
         <Button
           variant="secondary"
-          onPress={handleGoogleSignIn}
-          isDisabled={isLoading}
+          onPress={() => handleSignIn("google")}
+          isDisabled={loadingProvider !== null}
           className="rounded-lg bg-foreground"
         >
-          {isLoading ? (
+          {loadingProvider === "google" ? (
             <Spinner size="sm" color={backgroundColor} />
           ) : (
             <>
@@ -311,11 +295,11 @@ export default function Home() {
 
         <Button
           variant="secondary"
-          onPress={handleGitHubSignIn}
-          isDisabled={isLoading}
+          onPress={() => handleSignIn("github")}
+          isDisabled={loadingProvider !== null}
           className="rounded-lg bg-foreground"
         >
-          {isLoading ? (
+          {loadingProvider === "github" ? (
             <Spinner size="sm" color={backgroundColor} />
           ) : (
             <>
