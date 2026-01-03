@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getDeviceIdentifier } from "@/utils/device-identifier";
+import { getDeviceIdentifier } from "~/utils/device-identifier";
 
 type UseDeviceIdentifierResult = {
   deviceIdentifier: string | null;

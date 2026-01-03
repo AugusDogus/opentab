@@ -4,7 +4,7 @@ import { Platform, Pressable } from "react-native";
 import Animated, { FadeOut, ZoomIn } from "react-native-reanimated";
 import { withUniwind } from "uniwind";
 
-import { useAppTheme } from "@/contexts/app-theme-context";
+import { useAppTheme } from "~/contexts/app-theme-context";
 
 const StyledIonicons = withUniwind(Ionicons);
 

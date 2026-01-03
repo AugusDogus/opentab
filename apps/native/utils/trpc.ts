@@ -4,8 +4,8 @@ import { QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
-import { authClient } from "@/lib/auth-client";
-import { env } from "@/lib/env";
+import { authClient } from "~/lib/auth-client";
+import { env } from "~/lib/env";
 
 export const queryClient = new QueryClient();
 

@@ -2,7 +2,7 @@ import { expoClient } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
 import * as SecureStore from "expo-secure-store";
 
-import { env } from "@/lib/env";
+import { env } from "~/lib/env";
 
 // Use hardcoded scheme to avoid issues with Constants.expoConfig being undefined in some contexts
 const SCHEME = "opentab";

@@ -15,11 +15,11 @@ import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 
-import { DialogBlurBackdrop } from "@/components/dialog-blur-backdrop";
-import { useDeviceRegistration } from "@/hooks/use-device-registration";
-import { useShareIntent } from "@/hooks/use-share-intent";
-import { authClient } from "@/lib/auth-client";
-import { queryClient, trpc } from "@/utils/trpc";
+import { DialogBlurBackdrop } from "~/components/dialog-blur-backdrop";
+import { useDeviceRegistration } from "~/hooks/use-device-registration";
+import { useShareIntent } from "~/hooks/use-share-intent";
+import { authClient } from "~/lib/auth-client";
+import { queryClient, trpc } from "~/utils/trpc";
 
 const StyledIonicons = withUniwind(Ionicons);
 const StyledSafeAreaView = withUniwind(SafeAreaView);

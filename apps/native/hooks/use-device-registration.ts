@@ -6,8 +6,8 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { useEffect, useRef, useCallback } from "react";
 
-import { useDeviceIdentifier } from "@/hooks/use-device-identifier";
-import { trpc } from "@/utils/trpc";
+import { useDeviceIdentifier } from "~/hooks/use-device-identifier";
+import { trpc } from "~/utils/trpc";
 
 const openUrl = (url: string) => {
   Linking.openURL(url);

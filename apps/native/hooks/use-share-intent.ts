@@ -4,8 +4,8 @@ import { useShareIntent as useExpoShareIntent } from "expo-share-intent";
 import { useEffect, useRef } from "react";
 import { BackHandler, Platform } from "react-native";
 
-import { useDeviceIdentifier } from "@/hooks/use-device-identifier";
-import { trpc } from "@/utils/trpc";
+import { useDeviceIdentifier } from "~/hooks/use-device-identifier";
+import { trpc } from "~/utils/trpc";
 
 const extractUrlFromText = (text: string): string | null => {
   const urlMatch = text.match(/https?:\/\/[^\s]+/);
