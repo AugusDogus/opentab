@@ -12,6 +12,8 @@ export const env = createEnv({
     APPLE_CLIENT_ID: z.string().min(1),
     APPLE_CLIENT_SECRET: z.string().min(1),
     APPLE_APP_BUNDLE_IDENTIFIER: z.string(),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
     CHROME_EXTENSION_ID: z.string().optional(),
     // Upstash Redis for real-time pub/sub
     UPSTASH_REDIS_REST_URL: z.url().optional(),

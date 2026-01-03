@@ -44,6 +44,13 @@ export function initAuth(options: {
           ? `${options.productionUrl}/api/auth/callback/apple`
           : undefined,
       },
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        redirectURI: options.productionUrl
+          ? `${options.productionUrl}/api/auth/callback/google`
+          : undefined,
+      },
     },
     advanced: {
       defaultCookieAttributes: {
