@@ -113,9 +113,40 @@ export default function PrivacyPage() {
               </p>
             </section>
 
+            <section id="delete-account">
+              <h2 className="mb-3 text-xl font-semibold">
+                5. Account Deletion
+              </h2>
+              <p className="mb-3">
+                You can delete your OpenTab account at any time directly from
+                within the app:
+              </p>
+              <ol className="ml-6 list-outside list-decimal space-y-2 mb-4">
+                <li>Open the OpenTab app on your mobile device or browser extension</li>
+                <li>Tap the Settings icon (gear icon)</li>
+                <li>Select &quot;Delete Account&quot;</li>
+                <li>Confirm the deletion when prompted</li>
+              </ol>
+              <p className="mb-3">
+                When you delete your account, the following data is permanently
+                and immediately removed from our servers:
+              </p>
+              <ul className="ml-6 list-outside list-disc space-y-2 mb-4">
+                <li>Your account information (name, email, profile picture)</li>
+                <li>All registered devices and their push notification tokens</li>
+                <li>Any pending tabs that have not yet been delivered</li>
+                <li>Authentication sessions and tokens</li>
+              </ul>
+              <p>
+                Account deletion is immediate and irreversible. There is no
+                retention period — all data is deleted at the time of your
+                request.
+              </p>
+            </section>
+
             <section>
               <h2 className="mb-3 text-xl font-semibold">
-                5. Third-Party Services
+                6. Third-Party Services
               </h2>
               <p className="mb-3">
                 OpenTab uses third-party services for authentication (Google,
@@ -129,7 +160,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mb-3 text-xl font-semibold">
-                6. Children&apos;s Privacy
+                7. Children&apos;s Privacy
               </h2>
               <p>
                 OpenTab is intended for users who are at least 13 years of age.
@@ -140,7 +171,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold">7. Data Security</h2>
+              <h2 className="mb-3 text-xl font-semibold">8. Data Security</h2>
               <p>
                 We implement appropriate technical and organizational security
                 measures to protect your information against unauthorized
@@ -150,7 +181,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold">8. Your Rights</h2>
+              <h2 className="mb-3 text-xl font-semibold">9. Your Rights</h2>
               <p className="mb-3">
                 Depending on your location, you may have certain rights
                 regarding your personal information, including:
@@ -178,7 +209,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mb-3 text-xl font-semibold">
-                9. Changes to This Privacy Policy
+                10. Changes to This Privacy Policy
               </h2>
               <p>
                 We may update this Privacy Policy from time to time. We will
@@ -189,7 +220,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-xl font-semibold">10. Contact Us</h2>
+              <h2 className="mb-3 text-xl font-semibold">11. Contact Us</h2>
               <p>
                 If you have any questions about this Privacy Policy or our data
                 practices, please open an issue on our{" "}
