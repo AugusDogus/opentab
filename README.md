@@ -15,7 +15,7 @@
 
 - [Expo](https://expo.dev/) - React Native framework with SDK 54
 - [Plasmo](https://docs.plasmo.com/) - Browser extension framework
-- [Hono](https://hono.dev/) - Lightweight web framework for the API server
+- [Next.js](https://nextjs.org/) - React framework for the landing page and API routes
 - [tRPC](https://trpc.io/) v11 - Type-safe API layer
 - [Better Auth](https://www.better-auth.com/) - Authentication
 - [Drizzle ORM](https://orm.drizzle.team/) - Database ORM
@@ -28,28 +28,29 @@
 
 The monorepo is organized using [Turborepo](https://turborepo.com) and contains:
 
-```text
+```bash
 opentab/
 ├── apps/
-│   ├── extension/         # Chrome extension
+│   ├── extension/     # Chrome extension
 │   │   ├─ Plasmo framework
 │   │   ├─ React 19
 │   │   ├─ Tailwind CSS
 │   │   └─ Typesafe API calls using tRPC
-│   ├── native/            # React Native mobile app
+│   ├── native/        # React Native mobile app
 │   │   ├─ Expo SDK 54
 │   │   ├─ React Native using React 19
 │   │   ├─ Navigation using Expo Router
 │   │   ├─ Tailwind using NativeWind
 │   │   └─ Typesafe API calls using tRPC
-│   └── server/            # Hono API server
-│       ├─ Hono with Bun runtime
+│   └── server/        # Next.js app
+│       ├─ Landing page with marketing content
+│       ├─ API routes (tRPC, auth, realtime)
 │       └─ E2E Typesafe API Server & Client
 ├── packages/
-│   ├── api/               # tRPC v11 router definition
-│   ├── auth/              # Better Auth configuration
-│   ├── config/            # Shared TypeScript configuration
-│   └── db/                # Drizzle ORM with Turso (libSQL)
+│   ├── api/           # tRPC v11 router definition
+│   ├── auth/          # Better Auth configuration
+│   ├── config/        # Shared TypeScript configuration
+│   └── db/            # Drizzle ORM with Turso (libSQL)
 ```
 
 ## Getting Started
@@ -85,9 +86,9 @@ bun db:push
 bun dev
 
 # Or start specific apps
-bun dev:extension  # Chrome extension
-bun dev:native     # Expo app
-bun dev:server     # API server
+bun dev:extension      # Chrome extension
+bun dev:native         # Expo app
+bun dev:server         # API server
 ```
 
 ### 5. Load the Extension
@@ -100,23 +101,23 @@ For the Chrome extension, load `apps/extension/build/chrome-mv2-dev` as an unpac
 
 ```bash
 # Development
-bun dev              # Start all apps in parallel
-bun dev:extension    # Start Chrome extension
-bun dev:native       # Start Expo app
-bun dev:server       # Start API server
+bun dev                # Start all apps in parallel
+bun dev:extension      # Start Chrome extension
+bun dev:native         # Start Expo app
+bun dev:server         # Start API server
 
 # Database
-bun db:push          # Push schema changes to Turso
-bun db:generate      # Generate migrations
-bun db:migrate       # Run migrations
-bun db:studio        # Open Drizzle Studio
+bun db:push            # Push schema changes to Turso
+bun db:generate        # Generate migrations
+bun db:migrate         # Run migrations
+bun db:studio          # Open Drizzle Studio
 
 # Linting & Formatting
-bun lint             # Run oxlint and oxfmt
-bun typecheck        # Run TypeScript checks
+bun lint               # Run oxlint and oxfmt
+bun typecheck          # Run TypeScript checks
 
 # Building
-bun build            # Build all packages
+bun build              # Build all packages
 ```
 
 ## Why Manifest V2?
