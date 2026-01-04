@@ -17,7 +17,6 @@ import { withUniwind } from "uniwind";
 
 import { DialogBlurBackdrop } from "~/components/dialog-blur-backdrop";
 import { useDeviceRegistration } from "~/hooks/use-device-registration";
-import { useShareIntent } from "~/hooks/use-share-intent";
 import { authClient } from "~/lib/auth-client";
 import { queryClient, trpc } from "~/utils/trpc";
 
@@ -286,8 +285,6 @@ export default function Home() {
   const backgroundColor = useThemeColor("background");
 
   const { registerDevice, deviceIdentifier } = useDeviceRegistration();
-
-  useShareIntent();
 
   useEffect(() => {
     if (data?.user) {
