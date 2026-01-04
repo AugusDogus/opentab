@@ -6,7 +6,7 @@
         <h1>opentab</h1>
     </p>
     <p width="120">
-        Send tabs to your devices.
+        Send tabs to your devices instantly.
     </p>
     <video width="1460" height="1016" title="opentab" src="https://github.com/user-attachments/assets/60071e12-d41b-4a6e-8a07-7e61c8cceec4"></video>
 </div>

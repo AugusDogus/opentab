@@ -2,7 +2,7 @@
   "name": "@opentab/extension",
   "displayName": "opentab",
   "version": "0.0.2",
-  "description": "Send tabs to your devices.",
+  "description": "Send tabs to your devices instantly.",
   "author": "AugusDogus",
   "scripts": {
     "dev": "plasmo dev --target=chrome-mv2",
