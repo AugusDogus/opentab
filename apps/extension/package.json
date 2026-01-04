@@ -1,7 +1,7 @@
 {
   "name": "@opentab/extension",
   "displayName": "opentab",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Send tabs to your devices instantly.",
   "author": "AugusDogus",
   "scripts": {
