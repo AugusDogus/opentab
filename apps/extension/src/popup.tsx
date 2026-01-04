@@ -11,7 +11,7 @@ import { useCurrentTab } from "~hooks/use-current-tab"
 import { useDeviceRegistration } from "~hooks/use-device-registration"
 import { queryClient, trpc } from "~lib/trpc"
 
-import "~style.css"
+import "~/style.css"
 
 function AuthenticatedView({
   userName,
