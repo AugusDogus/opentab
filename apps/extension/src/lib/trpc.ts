@@ -3,7 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
-import { env } from "~env";
+import { env } from "~/env";
 
 export const queryClient = new QueryClient();
 

@@ -10,16 +10,10 @@ export default function Footer() {
           <Logo className="h-6 w-6" aria-hidden="true" />
           <span className="text-sm font-semibold">opentab</span>
           <span className="text-muted-foreground">•</span>
-          <Link
-            href="/terms"
-            className="text-xs underline underline-offset-2 md:text-sm"
-          >
+          <Link href="/terms" className="text-xs underline underline-offset-2 md:text-sm">
             Terms
           </Link>
-          <Link
-            href="/privacy"
-            className="text-xs underline underline-offset-2 md:text-sm"
-          >
+          <Link href="/privacy" className="text-xs underline underline-offset-2 md:text-sm">
             Privacy
           </Link>
         </div>

@@ -215,12 +215,7 @@ function AuthenticatedView({ userName, userImage, deviceIdentifier }: Authentica
             </View>
             <View className="flex-row justify-end gap-3">
               <Dialog.Close asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-lg"
-                  isDisabled={isDeleting}
-                >
+                <Button variant="ghost" size="sm" className="rounded-lg" isDisabled={isDeleting}>
                   Cancel
                 </Button>
               </Dialog.Close>

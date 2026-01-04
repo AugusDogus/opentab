@@ -1,6 +1,6 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
-import { Monitor, Smartphone, Trash2 } from "lucide-react"
-import { useCallback, useState } from "react"
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Monitor, Smartphone, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import {
   AlertDialog,
@@ -10,42 +10,40 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
-} from "~components/ui/alert-dialog"
-import { trpc } from "~lib/trpc"
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import { trpc } from "~/lib/trpc";
 
 interface DeviceListProps {
-  deviceIdentifier: string
+  deviceIdentifier: string;
 }
 
 export function DeviceList({ deviceIdentifier }: DeviceListProps) {
-  const devices = useQuery(trpc.device.list.queryOptions())
+  const devices = useQuery(trpc.device.list.queryOptions());
   const [deviceToRemove, setDeviceToRemove] = useState<{
-    id: string
-    name: string
-  } | null>(null)
+    id: string;
+    name: string;
+  } | null>(null);
 
   const removeDeviceMutation = useMutation(
     trpc.device.remove.mutationOptions({
       onSuccess: () => {
-        devices.refetch()
-        setDeviceToRemove(null)
-      }
-    })
-  )
+        devices.refetch();
+        setDeviceToRemove(null);
+      },
+    }),
+  );
 
   const handleConfirmRemove = useCallback(() => {
     if (deviceToRemove) {
-      removeDeviceMutation.mutate({ deviceId: deviceToRemove.id })
+      removeDeviceMutation.mutate({ deviceId: deviceToRemove.id });
     }
-  }, [deviceToRemove, removeDeviceMutation])
+  }, [deviceToRemove, removeDeviceMutation]);
 
   return (
     <>
       <div className="space-y-2 pt-4 border-t border-neutral-900">
-        <p className="text-xs text-neutral-600 uppercase tracking-wider">
-          devices
-        </p>
+        <p className="text-xs text-neutral-600 uppercase tracking-wider">devices</p>
         {devices.isPending ? (
           <p className="text-sm text-neutral-500">...</p>
         ) : devices.error ? (
@@ -53,12 +51,12 @@ export function DeviceList({ deviceIdentifier }: DeviceListProps) {
         ) : (
           <div className="space-y-0.5">
             {devices.data?.map((device) => {
-              const isCurrentDevice =
-                device.deviceIdentifier === deviceIdentifier
+              const isCurrentDevice = device.deviceIdentifier === deviceIdentifier;
               return (
                 <div
                   key={device.id}
-                  className="flex items-center gap-2 group text-neutral-300 py-1">
+                  className="flex items-center gap-2 group text-neutral-300 py-1"
+                >
                   {device.deviceType === "mobile" ? (
                     <Smartphone
                       className={`w-4 h-4 flex-shrink-0 ${isCurrentDevice ? "text-emerald-400" : ""}`}
@@ -75,16 +73,17 @@ export function DeviceList({ deviceIdentifier }: DeviceListProps) {
                     onClick={() =>
                       setDeviceToRemove({
                         id: device.id,
-                        name: device.deviceName ?? device.deviceType
+                        name: device.deviceName ?? device.deviceType,
                       })
                     }
                     disabled={removeDeviceMutation.isPending}
                     className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-500 hover:text-red-400 transition-all disabled:opacity-50"
-                    title="Remove device">
+                    title="Remove device"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              )
+              );
             })}
             {devices.data?.length === 0 && (
               <p className="text-sm text-neutral-500">No devices registered</p>
@@ -95,15 +94,13 @@ export function DeviceList({ deviceIdentifier }: DeviceListProps) {
 
       <AlertDialog
         open={deviceToRemove !== null}
-        onOpenChange={(open) => !open && setDeviceToRemove(null)}>
+        onOpenChange={(open) => !open && setDeviceToRemove(null)}
+      >
         <AlertDialogContent className="bg-neutral-900 border-neutral-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-neutral-100">
-              Remove device
-            </AlertDialogTitle>
+            <AlertDialogTitle className="text-neutral-100">Remove device</AlertDialogTitle>
             <AlertDialogDescription className="text-neutral-400">
-              Remove "{deviceToRemove?.name}" from your devices? You can
-              re-register it later.
+              Remove "{deviceToRemove?.name}" from your devices? You can re-register it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -113,12 +110,13 @@ export function DeviceList({ deviceIdentifier }: DeviceListProps) {
             <AlertDialogAction
               onClick={handleConfirmRemove}
               disabled={removeDeviceMutation.isPending}
-              className="bg-red-900 text-red-200 hover:bg-red-800">
+              className="bg-red-900 text-red-200 hover:bg-red-800"
+            >
               {removeDeviceMutation.isPending ? "Removing..." : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

@@ -1,14 +1,14 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query";
 
-import { getDeviceIdentifier } from "~lib/device-storage"
-import { queryClient, trpcClient } from "~lib/trpc"
+import { getDeviceIdentifier } from "~/lib/device-storage";
+import { queryClient, trpcClient } from "~/lib/trpc";
 
 export function useDeviceRegistration() {
   const { data: deviceIdentifier = "" } = useQuery({
     queryKey: ["deviceIdentifier"],
     queryFn: getDeviceIdentifier,
-    staleTime: Infinity
-  })
+    staleTime: Infinity,
+  });
 
   useQuery({
     queryKey: ["deviceRegistration", deviceIdentifier],
@@ -16,15 +16,15 @@ export function useDeviceRegistration() {
       const result = await trpcClient.device.register.mutate({
         deviceType: "browser_extension",
         deviceName: "Chrome Extension",
-        deviceIdentifier
-      })
-      queryClient.invalidateQueries({ queryKey: [["device", "list"]] })
-      return result
+        deviceIdentifier,
+      });
+      queryClient.invalidateQueries({ queryKey: [["device", "list"]] });
+      return result;
     },
     enabled: !!deviceIdentifier,
     staleTime: Infinity,
-    retry: false
-  })
+    retry: false,
+  });
 
-  return { deviceIdentifier }
+  return { deviceIdentifier };
 }

@@ -1,11 +1,7 @@
 "use client";
 
 import type * as React from "react";
-import {
-  CheckIcon,
-  ChevronRightIcon,
-  DotFilledIcon,
-} from "@radix-ui/react-icons";
+import { CheckIcon, ChevronRightIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 import { cn } from "~/lib/utils";
@@ -149,11 +145,7 @@ export function DropdownMenuLabel({
 }) {
   return (
     <DropdownMenuPrimitive.Label
-      className={cn(
-        "px-2 py-1.5 text-sm font-semibold",
-        inset && "pl-8",
-        className,
-      )}
+      className={cn("px-2 py-1.5 text-sm font-semibold", inset && "pl-8", className)}
       {...props}
     />
   );
@@ -171,14 +163,8 @@ export function DropdownMenuSeparator({
   );
 }
 
-export function DropdownMenuShortcut({
-  className,
-  ...props
-}: React.ComponentProps<"span">) {
+export function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<"span">) {
   return (
-    <span
-      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
-      {...props}
-    />
+    <span className={cn("ml-auto text-xs tracking-widest opacity-60", className)} {...props} />
   );
 }

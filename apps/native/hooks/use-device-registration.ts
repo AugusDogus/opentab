@@ -134,7 +134,7 @@ export const useDeviceRegistration = () => {
       Notifications.getLastNotificationResponseAsync().then((response) => {
         const url = response?.notification.request.content.data?.url as string | undefined;
         if (url) openUrl(url);
-    });
+      });
     }
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {});

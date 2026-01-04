@@ -11,9 +11,7 @@ import "~/app/globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    env.VERCEL_ENV === "production"
-      ? "https://opentab.app"
-      : "http://localhost:3000",
+    env.VERCEL_ENV === "production" ? "https://opentab.app" : "http://localhost:3000",
   ),
   title: "opentab",
   description: "Send tabs to your devices instantly",

@@ -37,8 +37,7 @@ export default function Hero() {
                 Send tabs to your devices instantly
               </h1>
               <p className="mx-auto max-w-xs text-pretty text-sm leading-tight sm:text-[16px]">
-                Fast, seamless tab sharing between your browser and mobile
-                devices.
+                Fast, seamless tab sharing between your browser and mobile devices.
               </p>
             </div>
           </div>
