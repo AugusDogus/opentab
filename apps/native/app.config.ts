@@ -56,7 +56,9 @@ export default {
     ],
     experiments: {
       typedRoutes: true,
-      reactCompiler: true,
+      // React Compiler disabled - causes iOS release builds to crash immediately
+      // with EXC_BAD_ACCESS in TurboModules. Re-enable when the experiment stabilizes.
+      // reactCompiler: true,
     },
     extra: {
       eas: {
