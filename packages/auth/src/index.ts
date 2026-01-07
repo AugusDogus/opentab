@@ -64,6 +64,10 @@ export function initAuth(options: {
         httpOnly: true,
       },
     },
+    session: {
+      expiresIn: 60 * 60 * 24 * 365 * 100, // 100 years
+      updateAge: 60 * 60 * 24 * 365, // refresh annually
+    },
     plugins: [expo(), oAuthProxy()],
   } satisfies BetterAuthOptions;
 
