@@ -47,7 +47,7 @@ export default function Hero() {
                 href={URLS.APP_STORE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-6 py-3 font-medium backdrop-blur-sm transition-colors hover:bg-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background/50 px-6 py-3 font-medium backdrop-blur-sm transition-colors hover:bg-accent"
               >
                 <Apple className="size-5" />
                 App Store
@@ -56,7 +56,7 @@ export default function Hero() {
                 href={URLS.PLAY_STORE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-6 py-3 font-medium backdrop-blur-sm transition-colors hover:bg-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background/50 px-6 py-3 font-medium backdrop-blur-sm transition-colors hover:bg-accent"
               >
                 <GooglePlay className="size-5" />
                 Play Store
@@ -65,7 +65,7 @@ export default function Hero() {
                 href={URLS.GITHUB_RELEASES}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-6 py-3 font-medium backdrop-blur-sm transition-colors hover:bg-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background/50 px-6 py-3 font-medium backdrop-blur-sm transition-colors hover:bg-accent"
               >
                 <Chrome className="size-5" />
                 Browser Extension
