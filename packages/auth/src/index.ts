@@ -4,7 +4,7 @@ import * as schema from "@opentab/db/schema/auth";
 import type { BetterAuthOptions } from "better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { bearer, oAuthProxy } from "better-auth/plugins";
+import { oAuthProxy } from "better-auth/plugins";
 
 export function initAuth(options: {
   baseUrl: string;
@@ -65,10 +65,10 @@ export function initAuth(options: {
       },
     },
     session: {
-      expiresIn: 60 * 60 * 24 * 365 * 100, // 100 years
-      updateAge: 60 * 60 * 24 * 365, // refresh annually
+      expiresIn: 60 * 60 * 24 * 400, // 400 days (max allowed)
+      updateAge: 60 * 60 * 24 * 30, // refresh monthly
     },
-    plugins: [bearer(), expo(), oAuthProxy()],
+    plugins: [expo(), oAuthProxy()],
   } satisfies BetterAuthOptions;
 
   return betterAuth(config);
