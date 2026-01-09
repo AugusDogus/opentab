@@ -10,7 +10,7 @@
  */
 import { handle } from "@upstash/realtime";
 
-import { getRealtime } from "~/lib/realtime";
+import { getRealtime } from "@opentab/api/redis";
 
 export const maxDuration = 300;
 

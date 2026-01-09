@@ -12,6 +12,10 @@ const schema = {
   },
 };
 
+export type RealtimeEvents = {
+  "tab.new": z.infer<typeof schema.tab.new>;
+};
+
 type RealtimeInstance = ReturnType<typeof createRealtime>;
 
 const createRealtime = () => {
@@ -28,7 +32,7 @@ const createRealtime = () => {
 
 let realtimeInstance: RealtimeInstance = null;
 
-export const getRealtime = (): RealtimeInstance => {
+export const getRealtime = (): NonNullable<RealtimeInstance> | null => {
   if (!realtimeInstance) {
     realtimeInstance = createRealtime();
   }
