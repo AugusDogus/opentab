@@ -30,6 +30,8 @@ export function DeviceList({ deviceIdentifier }: DeviceListProps) {
       onSuccess: () => {
         devices.refetch();
         setDeviceToRemove(null);
+        // Refresh the context menu to reflect the updated device list
+        chrome.runtime.sendMessage({ type: "REFRESH_DEVICE_MENU" });
       },
     }),
   );
