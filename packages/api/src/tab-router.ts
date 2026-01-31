@@ -212,6 +212,13 @@ export const tabRouter = router({
       return { sent: true, deviceType: "mobile" as const };
     }
 
+    if (targetDevice.deviceType === "mobile" && !targetDevice.pushToken) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Mobile device is not configured to receive push notifications.",
+      });
+    }
+
     if (targetDevice.deviceType === "browser_extension") {
       const tabId = crypto.randomUUID();
       await db.insert(pendingTab).values({
