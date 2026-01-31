@@ -66,6 +66,13 @@ const markTabDeliveredInput = z.object({
   tabId: z.string(),
 });
 
+const sendToDeviceInput = z.object({
+  url: z.string().url(),
+  title: z.string().optional(),
+  sourceDeviceIdentifier: z.string(),
+  targetDeviceId: z.string(),
+});
+
 export const tabRouter = router({
   send: protectedProcedure.input(sendTabInput).mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
@@ -140,6 +147,85 @@ export const tabRouter = router({
       sentToMobile: mobileDevices.length,
       sentToExtensions: extensionDevices.length,
     };
+  }),
+
+  sendToDevice: protectedProcedure.input(sendToDeviceInput).mutation(async ({ ctx, input }) => {
+    const userId = ctx.session.user.id;
+
+    const sourceDevice = await db.query.device.findFirst({
+      where: and(
+        eq(device.userId, userId),
+        eq(device.deviceIdentifier, input.sourceDeviceIdentifier),
+      ),
+    });
+
+    if (!sourceDevice) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Source device not found. Please register your device first.",
+      });
+    }
+
+    const targetDevice = await db.query.device.findFirst({
+      where: and(eq(device.userId, userId), eq(device.id, input.targetDeviceId)),
+    });
+
+    if (!targetDevice) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Target device not found.",
+      });
+    }
+
+    if (targetDevice.id === sourceDevice.id) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Cannot send tab to the same device.",
+      });
+    }
+
+    if (targetDevice.deviceType === "mobile" && targetDevice.pushToken) {
+      await sendExpoPushNotification([
+        {
+          to: targetDevice.pushToken,
+          title: "Open Tab",
+          body: input.title ?? input.url,
+          data: {
+            url: input.url,
+            title: input.title,
+            sourceDeviceId: sourceDevice.id,
+          },
+          sound: "default",
+          priority: "high",
+        },
+      ]);
+      return { sent: true, deviceType: "mobile" as const };
+    }
+
+    if (targetDevice.deviceType === "browser_extension") {
+      const tabId = crypto.randomUUID();
+      await db.insert(pendingTab).values({
+        id: tabId,
+        userId,
+        targetDeviceId: targetDevice.id,
+        sourceDeviceId: sourceDevice.id,
+        url: input.url,
+        title: input.title ?? null,
+      });
+
+      await emitTabEvent(targetDevice.id, {
+        id: tabId,
+        url: input.url,
+        title: input.title ?? null,
+      });
+
+      return { sent: true, deviceType: "browser_extension" as const };
+    }
+
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Unable to send to this device type.",
+    });
   }),
 
   getPending: protectedProcedure.input(getPendingTabsInput).query(async ({ ctx, input }) => {

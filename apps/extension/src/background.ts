@@ -75,6 +75,20 @@ const sendTabToDevices = async (url: string, title?: string): Promise<void> => {
   });
 };
 
+const sendTabToDevice = async (
+  url: string,
+  targetDeviceId: string,
+  title?: string,
+): Promise<void> => {
+  const deviceIdentifier = await getDeviceIdentifier();
+  await trpcClient.tab.sendToDevice.mutate({
+    url,
+    title,
+    sourceDeviceIdentifier: deviceIdentifier,
+    targetDeviceId,
+  });
+};
+
 const openAndMarkTab = (tabId: string, url: string): void => {
   chrome.tabs.create({ url, active: true }, (createdTab) => {
     trpcClient.tab.markDelivered.mutate({ tabId }).catch(() => {
@@ -143,18 +157,125 @@ const initialize = async (): Promise<void> => {
 
   await processPendingTabs();
   await subscribeToRealtime();
+  // Refresh device menu items after successful initialization
+  await updateDeviceMenuItems();
 };
+
+// Listen for messages from popup to refresh device list
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === "REFRESH_DEVICE_MENU") {
+    updateDeviceMenuItems().then(() => {
+      sendResponse({ success: true });
+    });
+    return true; // Keep the message channel open for async response
+  }
+});
+
+// Store device list for context menu handling
+type Device = {
+  id: string;
+  deviceType: string;
+  deviceName: string | null;
+  deviceIdentifier: string;
+};
+
+let cachedDevices: Device[] = [];
+
+const MENU_ID_PREFIX = "opentab-device-";
+const MENU_ID_ALL_DEVICES = "opentab-all-devices";
+const MENU_ID_PARENT = "opentab-parent";
 
 // Create context menu on every service worker startup
 // This ensures the menu persists after Chrome unloads/reloads the service worker
 const createContextMenu = () => {
   chrome.contextMenus.removeAll(() => {
+    // Create parent menu
     chrome.contextMenus.create({
-      id: "opentab-action",
+      id: MENU_ID_PARENT,
       title: "Send to your devices",
       contexts: ["all", "browser_action"],
     });
+
+    // Create "All devices" option as first child
+    chrome.contextMenus.create({
+      id: MENU_ID_ALL_DEVICES,
+      parentId: MENU_ID_PARENT,
+      title: "All devices",
+      contexts: ["all", "browser_action"],
+    });
+
+    // Add separator
+    chrome.contextMenus.create({
+      id: "opentab-separator",
+      parentId: MENU_ID_PARENT,
+      type: "separator",
+      contexts: ["all", "browser_action"],
+    });
+
+    // Fetch devices and create individual menu items
+    updateDeviceMenuItems();
   });
+};
+
+const updateDeviceMenuItems = async (): Promise<void> => {
+  const currentDeviceIdentifier = await getDeviceIdentifier();
+
+  // Remove existing dynamic menu items first (old devices, no-devices, not-signed-in)
+  const menuIdsToRemove = [
+    ...cachedDevices.map((d) => `${MENU_ID_PREFIX}${d.id}`),
+    "opentab-no-devices",
+    "opentab-not-signed-in",
+  ];
+
+  for (const menuId of menuIdsToRemove) {
+    try {
+      chrome.contextMenus.remove(menuId);
+    } catch {
+      // Ignore if it doesn't exist
+    }
+  }
+
+  try {
+    const devices = await trpcClient.device.list.query();
+    // Filter out the current device
+    cachedDevices = devices.filter(
+      (d) => d.deviceIdentifier !== currentDeviceIdentifier,
+    );
+
+    // Create menu items for each device
+    for (const device of cachedDevices) {
+      const deviceLabel =
+        device.deviceName ?? (device.deviceType === "mobile" ? "Mobile" : "Browser");
+      const icon = device.deviceType === "mobile" ? "📱" : "💻";
+
+      chrome.contextMenus.create({
+        id: `${MENU_ID_PREFIX}${device.id}`,
+        parentId: MENU_ID_PARENT,
+        title: `${icon} ${deviceLabel}`,
+        contexts: ["all", "browser_action"],
+      });
+    }
+
+    if (cachedDevices.length === 0) {
+      chrome.contextMenus.create({
+        id: "opentab-no-devices",
+        parentId: MENU_ID_PARENT,
+        title: "No other devices registered",
+        enabled: false,
+        contexts: ["all", "browser_action"],
+      });
+    }
+  } catch {
+    // User not authenticated - create placeholder
+    cachedDevices = [];
+    chrome.contextMenus.create({
+      id: "opentab-not-signed-in",
+      parentId: MENU_ID_PARENT,
+      title: "Sign in to send tabs",
+      enabled: false,
+      contexts: ["all", "browser_action"],
+    });
+  }
 };
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -171,8 +292,18 @@ chrome.runtime.onStartup.addListener(() => {
 createContextMenu();
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "opentab-action" && tab?.url) {
+  if (!tab?.url) return;
+
+  const menuId = info.menuItemId as string;
+
+  if (menuId === MENU_ID_ALL_DEVICES) {
     sendTabToDevices(tab.url, tab.title);
+    return;
+  }
+
+  if (menuId.startsWith(MENU_ID_PREFIX)) {
+    const deviceId = menuId.replace(MENU_ID_PREFIX, "");
+    sendTabToDevice(tab.url, deviceId, tab.title);
   }
 });
 
