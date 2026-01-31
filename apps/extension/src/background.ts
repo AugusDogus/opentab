@@ -80,13 +80,17 @@ const sendTabToDevice = async (
   targetDeviceId: string,
   title?: string,
 ): Promise<void> => {
-  const deviceIdentifier = await getDeviceIdentifier();
-  await trpcClient.tab.sendToDevice.mutate({
-    url,
-    title,
-    sourceDeviceIdentifier: deviceIdentifier,
-    targetDeviceId,
-  });
+  try {
+    const deviceIdentifier = await getDeviceIdentifier();
+    await trpcClient.tab.sendToDevice.mutate({
+      url,
+      title,
+      sourceDeviceIdentifier: deviceIdentifier,
+      targetDeviceId,
+    });
+  } catch (error) {
+    console.error("[OpenTab] Failed to send tab to device:", error);
+  }
 };
 
 const openAndMarkTab = (tabId: string, url: string): void => {
