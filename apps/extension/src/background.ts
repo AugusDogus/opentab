@@ -177,6 +177,7 @@ type Device = {
   deviceType: string;
   deviceName: string | null;
   deviceIdentifier: string;
+  pushToken: string | null;
 };
 
 let cachedDevices: Device[] = [];
@@ -220,11 +221,12 @@ const createContextMenu = () => {
 const updateDeviceMenuItems = async (): Promise<void> => {
   const currentDeviceIdentifier = await getDeviceIdentifier();
 
-  // Remove existing dynamic menu items first (old devices, no-devices, not-signed-in)
+  // Remove existing dynamic menu items first (old devices, no-devices, not-signed-in, refresh-failed)
   const menuIdsToRemove = [
     ...cachedDevices.map((d) => `${MENU_ID_PREFIX}${d.id}`),
     "opentab-no-devices",
     "opentab-not-signed-in",
+    "opentab-refresh-failed",
   ];
 
   for (const menuId of menuIdsToRemove) {
@@ -237,10 +239,14 @@ const updateDeviceMenuItems = async (): Promise<void> => {
 
   try {
     const devices = await trpcClient.device.list.query();
-    // Filter out the current device
-    cachedDevices = devices.filter(
-      (d) => d.deviceIdentifier !== currentDeviceIdentifier,
-    );
+    // Filter out the current device and mobile devices without push tokens
+    cachedDevices = devices.filter((d) => {
+      // Exclude the current device
+      if (d.deviceIdentifier === currentDeviceIdentifier) return false;
+      // Exclude mobile devices without push tokens (they can't receive tabs)
+      if (d.deviceType === "mobile" && !d.pushToken) return false;
+      return true;
+    });
 
     // Create menu items for each device
     for (const device of cachedDevices) {
@@ -266,15 +272,38 @@ const updateDeviceMenuItems = async (): Promise<void> => {
       });
     }
   } catch {
-    // User not authenticated - create placeholder
-    cachedDevices = [];
-    chrome.contextMenus.create({
-      id: "opentab-not-signed-in",
-      parentId: MENU_ID_PARENT,
-      title: "Sign in to send tabs",
-      enabled: false,
-      contexts: ["all", "browser_action"],
-    });
+    // Avoid wiping the menu on transient failures
+    if (cachedDevices.length === 0) {
+      // No cached devices - likely not authenticated
+      chrome.contextMenus.create({
+        id: "opentab-not-signed-in",
+        parentId: MENU_ID_PARENT,
+        title: "Sign in to send tabs",
+        enabled: false,
+        contexts: ["all", "browser_action"],
+      });
+    } else {
+      // Re-create menu items from cache and show refresh error
+      for (const device of cachedDevices) {
+        const deviceLabel =
+          device.deviceName ?? (device.deviceType === "mobile" ? "Mobile" : "Browser");
+        const icon = device.deviceType === "mobile" ? "📱" : "💻";
+
+        chrome.contextMenus.create({
+          id: `${MENU_ID_PREFIX}${device.id}`,
+          parentId: MENU_ID_PARENT,
+          title: `${icon} ${deviceLabel}`,
+          contexts: ["all", "browser_action"],
+        });
+      }
+      chrome.contextMenus.create({
+        id: "opentab-refresh-failed",
+        parentId: MENU_ID_PARENT,
+        title: "Unable to refresh devices",
+        enabled: false,
+        contexts: ["all", "browser_action"],
+      });
+    }
   }
 };
 

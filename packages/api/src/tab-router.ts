@@ -20,8 +20,8 @@ type ExpoPushMessage = {
   priority?: "high" | "normal" | "default";
 };
 
-const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<void> => {
-  if (messages.length === 0) return;
+const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<boolean> => {
+  if (messages.length === 0) return true;
 
   const response = await fetch(EXPO_PUSH_URL, {
     method: "POST",
@@ -35,20 +35,24 @@ const sendExpoPushNotification = async (messages: ExpoPushMessage[]): Promise<vo
 
   if (!response.ok) {
     console.error("Failed to send push notification:", await response.text());
-    return;
+    return false;
   }
 
   try {
     const result = (await response.json()) as {
       data?: Array<{ status: string; message?: string; details?: unknown }>;
     };
+    let hasError = false;
     for (const ticket of result.data ?? []) {
       if (ticket.status === "error") {
         console.error("Push notification error:", ticket.message, ticket.details);
+        hasError = true;
       }
     }
+    return !hasError;
   } catch (e) {
     console.error("Failed to parse push notification response:", e);
+    return false;
   }
 };
 
@@ -185,7 +189,7 @@ export const tabRouter = router({
     }
 
     if (targetDevice.deviceType === "mobile" && targetDevice.pushToken) {
-      await sendExpoPushNotification([
+      const sent = await sendExpoPushNotification([
         {
           to: targetDevice.pushToken,
           title: "Open Tab",
@@ -199,6 +203,12 @@ export const tabRouter = router({
           priority: "high",
         },
       ]);
+      if (!sent) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send push notification.",
+        });
+      }
       return { sent: true, deviceType: "mobile" as const };
     }
 
