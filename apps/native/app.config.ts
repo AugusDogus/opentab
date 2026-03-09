@@ -38,8 +38,8 @@ export default {
       [
         "expo-notifications",
         {
-          icon: "./assets/images/android-icon-monochrome.png",
-          color: "#000000",
+          icon: "./assets/images/notification-icon.png",
+          color: "#ffffff",
         },
       ],
       [
